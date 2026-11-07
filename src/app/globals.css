@@ -1,26 +1,92 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-ink: #0f1733;
+  --color-muted: #5b6478;
+  --color-line: #e6e9f2;
+  --color-soft: #f2f4fa;
+  --color-page: #a9bfee;
+  --color-brand: #2f6bff;
+  --color-brand-dark: #2350d6;
+  --color-violet: #7c4dff;
+  --radius-card: 1.75rem;
+}
+
+/* Base size is 18px for older eyes. "Larger text" mode bumps everything to 22px. */
+html {
+  font-size: 112.5%;
+  color-scheme: light;
+}
+html.large-text {
+  font-size: 137.5%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-ink);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #c9d7f7 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 0%, #b9c6f3 0%, transparent 55%),
+    #a9bfee;
+  background-attachment: fixed;
+}
+
+:focus-visible {
+  outline: 3px solid #2f6bff;
+  outline-offset: 3px;
+  border-radius: 0.75rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--radius-card);
+  box-shadow: 0 24px 60px -30px rgba(30, 41, 99, 0.45), 0 2px 6px rgba(30, 41, 99, 0.06);
+}
+
+.hero-gradient {
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(58, 29, 143, 0.95) 0%, transparent 60%),
+    radial-gradient(90% 70% at 100% 100%, rgba(47, 107, 255, 0.95) 0%, transparent 65%),
+    linear-gradient(160deg, #24155f 0%, #6b3fd0 50%, #2f6bff 100%);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.btn-gradient {
+  background: linear-gradient(180deg, #4d84ff 0%, #2f6bff 100%);
+  box-shadow: 0 12px 24px -10px rgba(47, 107, 255, 0.7);
+}
+.btn-gradient:hover {
+  background: linear-gradient(180deg, #3f77ff 0%, #2350d6 100%);
+}
+
+/* Big gradient score number, colored by risk level. */
+.score-number {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+}
+.score-none { background-image: linear-gradient(135deg, #0d9488 0%, #2f6bff 100%); }
+.score-low { background-image: linear-gradient(135deg, #2f6bff 0%, #7c4dff 100%); }
+.score-caution { background-image: linear-gradient(135deg, #d97706 0%, #ea580c 100%); }
+.score-high { background-image: linear-gradient(135deg, #e11d48 0%, #7c4dff 100%); }
+
+/* Risk meter: teal (no flags) to amber (careful) to rose (high). Words label each zone too. */
+.meter-track {
+  background: linear-gradient(90deg, #2dd4bf 0%, #5eead4 18%, #fbbf24 45%, #fb923c 62%, #f43f5e 82%, #e11d48 100%);
+}
+.meter-knob {
+  transition: left 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meter-knob { transition: none; }
 }
