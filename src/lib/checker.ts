@@ -124,16 +124,34 @@ function nextStepsFor(level: Level, type: ScamType | null, links: LinkReport[], 
   return steps;
 }
 
-function summaryFor(level: Level, typeLabel: string | null, top: Evidence[]): string {
+const MONEY_TYPES = new Set<ScamType>(["family", "prize", "government", "job", "tech", "toll", "delivery", "bank"]);
+
+/** "Don't tap the link, call the number, or reply." Only the actions that fit this message. */
+function doNotList(type: ScamType | null, links: LinkReport[], phones: string[]): string {
+  const acts: string[] = [];
+  if (links.some((l) => !l.officialBrand)) acts.push("tap the link");
+  if (phones.length) acts.push("call the number");
+  if (type && MONEY_TYPES.has(type)) acts.push("send money");
+  acts.push("reply");
+  if (acts.length <= 2) return acts.join(" or ");
+  return `${acts.slice(0, -1).join(", ")}, or ${acts[acts.length - 1]}`;
+}
+
+function summaryFor(
+  level: Level,
+  typeLabel: string | null,
+  top: Evidence[],
+  doNot: string,
+): string {
   switch (level) {
     case "none":
       return "We didn't find any warning signs. That isn't a guarantee. If it asks for money, codes, or personal details, contact the company yourself using a number you trust.";
     case "low":
       return `We found ${top.length === 1 ? "one small warning sign" : "some small warning signs"}. Be careful, and check with the company directly if you're unsure.`;
     case "caution":
-      return `This has warning signs${typeLabel ? ` of a ${typeLabel.toLowerCase()}` : ""}. Don't tap links or call numbers in it until you check with the company directly.`;
+      return `This has warning signs${typeLabel ? ` of a ${typeLabel.toLowerCase()}` : ""}. Don't ${doNot} until you check with the company directly.`;
     case "high":
-      return `This has strong signs of a ${typeLabel ? typeLabel.toLowerCase() : "scam"}. Don't tap links, call numbers, or reply.`;
+      return `This has strong signs of a ${typeLabel ? typeLabel.toLowerCase() : "scam"}. Don't ${doNot}.`;
   }
 }
 
@@ -190,7 +208,7 @@ export function checkMessage(input: string): CheckReport {
     score,
     level,
     headline: HEADLINES[level],
-    summary: summaryFor(level, scamType?.label ?? null, risky),
+    summary: summaryFor(level, scamType?.label ?? null, risky, doNotList(typeId, links, phones)),
     scamType,
     evidence: [...risky, ...good],
     links,

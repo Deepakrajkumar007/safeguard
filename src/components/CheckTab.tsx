@@ -4,15 +4,40 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { EXAMPLES } from "@/lib/examples";
 import { reportToSpeech, speak, stopSpeaking } from "@/lib/speech";
 import type { CheckReport } from "@/lib/types";
+import { ExplainCard, explanationToSpeech, type ExplainState } from "./ExplainCard";
 import { LinksCard, NextStepsCard, VerdictCard } from "./Verdict";
+
+type Speaking = "verdict" | "explain" | null;
 
 export function CheckTab({ autoRead }: { autoRead: boolean }) {
   const [text, setText] = useState("");
   const [report, setReport] = useState<CheckReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [speaking, setSpeaking] = useState(false);
+  const [speaking, setSpeaking] = useState<Speaking>(null);
+  const [explain, setExplain] = useState<ExplainState>({ status: "idle" });
   const resultRef = useRef<HTMLDivElement>(null);
+  const requestId = useRef(0);
+
+  // Ask Claude to explain the verdict. Runs after the instant checker result, never blocks it.
+  const fetchExplanation = useCallback(async (value: string, id: number) => {
+    setExplain({ status: "loading" });
+    try {
+      const res = await fetch("/api/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: value }),
+      });
+      const data = await res.json();
+      if (id !== requestId.current) return; // a newer check started; drop this answer
+      if (!res.ok) setExplain({ status: "error", message: data.error ?? "The AI explanation isn't available right now." });
+      else setExplain({ status: "done", data });
+    } catch {
+      if (id === requestId.current) {
+        setExplain({ status: "error", message: "Couldn't reach the AI. The checker's result above still applies." });
+      }
+    }
+  }, []);
 
   const runCheck = useCallback(
     async (value: string, opts: { speakResult: boolean }) => {
@@ -20,10 +45,12 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
         setError("Paste a text message or link first.");
         return;
       }
+      const id = ++requestId.current;
       setLoading(true);
       setError(null);
+      setExplain({ status: "idle" });
       stopSpeaking();
-      setSpeaking(false);
+      setSpeaking(null);
       try {
         const res = await fetch("/api/check", {
           method: "POST",
@@ -33,12 +60,13 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Something went wrong. Please try again.");
         setReport(data as CheckReport);
+        void fetchExplanation(value, id);
         if (window.innerWidth < 1024) {
           resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         }
         if (opts.speakResult) {
-          setSpeaking(true);
-          speak(reportToSpeech(data as CheckReport), () => setSpeaking(false));
+          setSpeaking("verdict");
+          speak(reportToSpeech(data as CheckReport), () => setSpeaking(null));
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
@@ -46,7 +74,7 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
         setLoading(false);
       }
     },
-    [],
+    [fetchExplanation],
   );
 
   // Deep link for demos and screenshots: /?example=bank
@@ -61,15 +89,19 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
     return () => clearTimeout(t);
   }, [runCheck]);
 
-  const toggleSpeak = () => {
-    if (!report) return;
-    if (speaking) {
+  const toggleSpeak = (what: "verdict" | "explain") => {
+    if (speaking === what) {
       stopSpeaking();
-      setSpeaking(false);
-    } else {
-      setSpeaking(true);
-      speak(reportToSpeech(report), () => setSpeaking(false));
+      setSpeaking(null);
+      return;
     }
+    const words =
+      what === "verdict"
+        ? report && reportToSpeech(report)
+        : explain.status === "done" && explanationToSpeech(explain.data);
+    if (!words) return;
+    setSpeaking(what);
+    speak(words, () => setSpeaking(null));
   };
 
   return (
@@ -134,8 +166,10 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
                   setText("");
                   setReport(null);
                   setError(null);
+                  setExplain({ status: "idle" });
+                  requestId.current++;
                   stopSpeaking();
-                  setSpeaking(false);
+                  setSpeaking(null);
                 }}
                 className="mt-3 w-full rounded-2xl px-6 py-2 text-base font-medium text-white/80 hover:text-white"
               >
@@ -158,7 +192,8 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
       </div>
 
       <div ref={resultRef} className="space-y-6">
-        <VerdictCard report={report} speaking={speaking} onSpeak={toggleSpeak} />
+        <VerdictCard report={report} speaking={speaking === "verdict"} onSpeak={() => toggleSpeak("verdict")} />
+        <ExplainCard state={explain} speaking={speaking === "explain"} onSpeak={() => toggleSpeak("explain")} />
         {report && <NextStepsCard report={report} />}
         {report && (
           <div className="lg:hidden">
