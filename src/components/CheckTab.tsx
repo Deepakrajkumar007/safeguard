@@ -19,7 +19,7 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
   const resultRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
 
-  // Ask Claude to explain the verdict. Runs after the instant checker result, never blocks it.
+  // Ask the AI (Gemini) to explain the verdict. Runs after the instant checker result, never blocks it.
   const fetchExplanation = useCallback(async (value: string, id: number) => {
     setExplain({ status: "loading" });
     try {

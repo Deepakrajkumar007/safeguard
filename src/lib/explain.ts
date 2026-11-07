@@ -1,12 +1,13 @@
 import type { CheckReport } from "./types";
 
 /**
- * Claude's role: explain the deterministic checker's verdict in plain English.
- * The score and verdict come from code. Claude can add a second opinion, which the UI
- * shows separately and labels as AI. Claude never changes the score.
+ * The AI's role (Google Gemini): explain the deterministic checker's verdict in plain English.
+ * The score and verdict come from code. The AI can add a second opinion, which the UI
+ * shows separately and labels as AI. The AI never changes the score.
  */
 
-export const EXPLAIN_MODEL = "claude-opus-5-5";
+/** Stable Gemini Flash model as of Nov 2026. Override with GEMINI_MODEL in .env.local. */
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 
 export interface Explanation {
   explanation: string;
@@ -38,7 +39,7 @@ export const EXPLANATION_SCHEMA = {
   },
   required: ["explanation", "second_opinion", "second_opinion_reason", "most_important_step"],
   additionalProperties: false,
-} as const;
+};
 
 export const SYSTEM_PROMPT = `You help older adults who are not comfortable with technology understand whether a text message, link, or call might be a scam.
 
@@ -98,6 +99,33 @@ Explain this result to the person in plain English.`;
 }
 
 const SAFE_CLAIM = /\b(it'?s|is|are|looks|seems|appears(?: to be)?)\s+(?:completely |totally |probably |likely |perfectly |100% )?safe\b/gi;
+
+const OPINIONS = new Set(["agrees", "more_concerned", "less_concerned"]);
+
+/** Parse and validate the AI's JSON. Returns null if anything is missing or the wrong type. */
+export function parseExplanation(raw: string | undefined | null): Explanation | null {
+  if (!raw) return null;
+  let v: unknown;
+  try {
+    v = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const str = (k: string) => (typeof o[k] === "string" && (o[k] as string).trim() ? (o[k] as string).trim() : null);
+  const explanation = str("explanation");
+  const reason = str("second_opinion_reason");
+  const step = str("most_important_step");
+  const opinion = typeof o.second_opinion === "string" && OPINIONS.has(o.second_opinion) ? o.second_opinion : null;
+  if (!explanation || !reason || !step || !opinion) return null;
+  return {
+    explanation: explanation.slice(0, 1200),
+    second_opinion: opinion as Explanation["second_opinion"],
+    second_opinion_reason: reason.slice(0, 400),
+    most_important_step: step.slice(0, 400),
+  };
+}
 
 /** Enforce the product promise: never call something "safe", even if the model slips. */
 export function enforceNoSafeClaim(e: Explanation): Explanation {

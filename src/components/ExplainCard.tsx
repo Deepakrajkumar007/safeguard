@@ -10,9 +10,9 @@ export type ExplainState =
   | { status: "error"; message: string };
 
 const OPINION: Record<Explanation["second_opinion"], { text: string; cls: string }> = {
-  agrees: { text: "Claude agrees with the score", cls: "bg-soft text-ink" },
-  more_concerned: { text: "Claude is MORE worried than the score", cls: "bg-rose-50 text-rose-700" },
-  less_concerned: { text: "Claude is less worried than the score", cls: "bg-blue-50 text-blue-700" },
+  agrees: { text: "The AI agrees with the score", cls: "bg-soft text-ink" },
+  more_concerned: { text: "The AI is MORE worried than the score", cls: "bg-rose-50 text-rose-700" },
+  less_concerned: { text: "The AI is less worried than the score", cls: "bg-blue-50 text-blue-700" },
 };
 
 export function explanationToSpeech(e: Explanation): string {
@@ -39,7 +39,7 @@ export function ExplainCard({
           </span>
           <div>
             <h3 className="text-xl font-bold">In plain English</h3>
-            <p className="text-sm text-muted">Written by Claude (AI). The score comes from LinkGuard&apos;s checks, not the AI.</p>
+            <p className="text-sm text-muted">Written by AI (Google Gemini). The score comes from LinkGuard&apos;s checks, not the AI.</p>
           </div>
         </div>
         {state.status === "done" && (
@@ -55,8 +55,8 @@ export function ExplainCard({
       </div>
 
       {state.status === "loading" && (
-        <div className="mt-5 space-y-3" aria-label="Claude is reading the evidence">
-          <p className="text-muted">Claude is reading the evidence…</p>
+        <div className="mt-5 space-y-3" aria-label="The AI is reading the evidence">
+          <p className="text-muted">The AI is reading the evidence…</p>
           <div className="h-4 w-11/12 animate-pulse rounded-full bg-soft" />
           <div className="h-4 w-10/12 animate-pulse rounded-full bg-soft" />
           <div className="h-4 w-7/12 animate-pulse rounded-full bg-soft" />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkMessage } from "../checker";
-import { buildUserContent, checkerSummary, enforceNoSafeClaim, type Explanation } from "../explain";
+import { buildUserContent, checkerSummary, enforceNoSafeClaim, parseExplanation, type Explanation } from "../explain";
 
 describe("explain prompt", () => {
   it("wraps the message as data and escapes tags so it can't break out", () => {
@@ -38,5 +38,26 @@ describe("never says safe", () => {
   it("leaves other uses alone", () => {
     const s = "Keep your money safe: call the number on your card.";
     expect(enforceNoSafeClaim({ ...base, explanation: s }).explanation).toBe(s);
+  });
+});
+
+describe("parseExplanation", () => {
+  const good = {
+    explanation: "This text pretends to be from USPS.",
+    second_opinion: "agrees",
+    second_opinion_reason: "The link is not usps.com.",
+    most_important_step: "Don't tap the link.",
+  };
+  it("accepts valid JSON", () => {
+    expect(parseExplanation(JSON.stringify(good))?.second_opinion).toBe("agrees");
+  });
+  it.each([
+    ["not json", "{oops"],
+    ["empty", ""],
+    ["missing field", JSON.stringify({ ...good, most_important_step: undefined })],
+    ["bad opinion", JSON.stringify({ ...good, second_opinion: "safe" })],
+    ["wrong type", JSON.stringify({ ...good, explanation: 42 })],
+  ])("rejects %s", (_name, raw) => {
+    expect(parseExplanation(raw)).toBeNull();
   });
 });

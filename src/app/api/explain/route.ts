@@ -1,17 +1,18 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { betaJSONSchemaOutputFormat } from "@anthropic-ai/sdk/helpers/beta/json-schema";
+import { GoogleGenAI } from "@google/genai";
 import { checkMessage } from "@/lib/checker";
 import {
-  EXPLAIN_MODEL,
+  DEFAULT_GEMINI_MODEL,
   EXPLANATION_SCHEMA,
   SYSTEM_PROMPT,
   buildUserContent,
   enforceNoSafeClaim,
-  type Explanation,
+  parseExplanation,
 } from "@/lib/explain";
 
-// Privacy: the message is sent to Anthropic's API to write the explanation. We don't log or store it.
+// Privacy: the message is sent to Google's Gemini API to write the explanation.
+// We don't log or store it, and we ask Google not to store the interaction (store: false).
 const MAX_CHARS = 5000;
+const TIMEOUT_MS = 20_000;
 
 function unavailable(reason: string, status = 503) {
   return Response.json({ error: reason }, { status });
@@ -29,53 +30,50 @@ export async function POST(request: Request) {
     return unavailable("Paste a text message or link first (5,000 characters max).", 400);
   }
 
-  // Re-run the checker on the server. Claude only ever sees evidence our own code produced,
+  // Re-run the checker on the server. The AI only ever sees evidence our own code produced,
   // never a report sent by the browser.
   const report = checkMessage(text);
 
-  // No key configured: skip the call. The checker's verdict works fine without the AI.
-  if (!process.env.ANTHROPIC_API_KEY?.trim() && !process.env.ANTHROPIC_AUTH_TOKEN?.trim()) {
-    return unavailable("The AI explanation is turned off because no Anthropic API key is set.");
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    return unavailable("The AI explanation is turned off because no Gemini API key is set.");
   }
-  const client = new Anthropic({ timeout: 30_000, maxRetries: 1 });
+  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const response = await client.beta.messages.parse({
-      model: EXPLAIN_MODEL,
-      max_tokens: 16000,
-      // A short explanation doesn't need deep reasoning. Low effort keeps it fast for a live demo.
-      output_config: {
-        effort: "low",
-        format: betaJSONSchemaOutputFormat(EXPLANATION_SCHEMA),
+    const interaction = await ai.interactions.create(
+      {
+        model,
+        system_instruction: SYSTEM_PROMPT,
+        input: buildUserContent(report, text),
+        response_format: { type: "text", mime_type: "application/json", schema: EXPLANATION_SCHEMA },
+        // A short explanation doesn't need deep reasoning. Low thinking keeps it fast for a live demo.
+        generation_config: { thinking_level: "low" },
+        store: false,
       },
-      // If a safety classifier declines, retry on Anthropic's recommended fallback model.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: buildUserContent(report, text) }],
-    });
+      { timeout_ms: TIMEOUT_MS },
+    );
 
-    if (response.stop_reason === "refusal") {
-      return unavailable("The AI couldn't explain this one. The checker's result above still applies.");
-    }
-    const parsed = response.parsed_output as Explanation | null;
+    const parsed = parseExplanation(interaction.output_text);
     if (!parsed) {
       return unavailable("The AI explanation didn't come through. The checker's result above still applies.");
     }
-    return Response.json({ ...enforceNoSafeClaim(parsed), model: response.model, score: report.score });
+    return Response.json({ ...enforceNoSafeClaim(parsed), model, score: report.score });
   } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError) {
-      return unavailable("The AI explanation is turned off because the Anthropic API key is missing or invalid.");
+    // Map common failures to plain messages. Never echo the raw error (it can include request details).
+    const status = (error as { status?: number; statusCode?: number })?.status ?? (error as { statusCode?: number })?.statusCode;
+    // Server log for debugging: status and a short error summary only, never the user's message.
+    console.warn(`[explain] Gemini error status=${status ?? "none"}: ${String((error as Error)?.message ?? error).slice(0, 200)}`);
+    if (status === 400 || status === 401 || status === 403) {
+      return unavailable("The AI explanation is turned off because the Gemini API key is missing or invalid.");
     }
-    if (error instanceof Anthropic.RateLimitError) {
+    if (status === 404) {
+      return unavailable(`The AI model "${model}" wasn't found. Set GEMINI_MODEL in .env.local.`);
+    }
+    if (status === 429) {
       return unavailable("The AI is busy right now. Try again in a minute. The checker's result above still applies.");
     }
-    if (error instanceof Anthropic.APIConnectionError) {
-      return unavailable("Couldn't reach the AI (no internet?). The checker's result above still applies.");
-    }
-    if (error instanceof Anthropic.APIError) {
-      return unavailable(`The AI returned an error (${error.status ?? "unknown"}). The checker's result above still applies.`);
-    }
-    return unavailable("Something went wrong with the AI explanation. The checker's result above still applies.");
+    return unavailable("Couldn't reach the AI right now. The checker's result above still applies.");
   }
 }
