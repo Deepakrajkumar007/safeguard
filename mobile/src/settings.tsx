@@ -5,14 +5,27 @@ import { colors } from "./theme";
 interface Settings {
   largeText: boolean;
   setLargeText: (v: boolean) => void;
+  /** Read every result aloud automatically. On by default for older adults. */
+  autoRead: boolean;
+  setAutoRead: (v: boolean) => void;
   scale: number;
 }
 
-const SettingsContext = createContext<Settings>({ largeText: false, setLargeText: () => {}, scale: 1 });
+const SettingsContext = createContext<Settings>({
+  largeText: false,
+  setLargeText: () => {},
+  autoRead: true,
+  setAutoRead: () => {},
+  scale: 1,
+});
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [largeText, setLargeText] = useState(false);
-  const value = useMemo(() => ({ largeText, setLargeText, scale: largeText ? 1.25 : 1 }), [largeText]);
+  const [autoRead, setAutoRead] = useState(true);
+  const value = useMemo(
+    () => ({ largeText, setLargeText, autoRead, setAutoRead, scale: largeText ? 1.25 : 1 }),
+    [largeText, autoRead],
+  );
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }
 

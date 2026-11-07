@@ -8,7 +8,7 @@ import { colors, radius } from "@/theme";
 type IconName = keyof typeof Ionicons.glyphMap;
 
 const QUICK: { label: string; icon: IconName; color: string; href: Href }[] = [
-  { label: "Check text", icon: "chatbubble-ellipses", color: colors.blue, href: "/soon?title=Check a message" },
+  { label: "Check text", icon: "chatbubble-ellipses", color: colors.blue, href: "/check" },
   { label: "Screenshot", icon: "image", color: "#7C4DFF", href: "/soon?title=Read a screenshot" },
   { label: "Open a site", icon: "globe", color: "#0B9E6F", href: "/soon?title=Open a site" },
   { label: "Call guard", icon: "call", color: "#E0457B", href: "/soon?title=Call guard" },
@@ -48,7 +48,7 @@ const FEATURES: { title: string; body: string; icon: IconName; bg: string; href:
 
 export default function Home() {
   const router = useRouter();
-  const { largeText, setLargeText } = useSettings();
+  const { largeText, setLargeText, autoRead, setAutoRead } = useSettings();
 
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
@@ -68,18 +68,34 @@ export default function Home() {
               </T>
             </View>
           </View>
+        </View>
+
+        {/* Settings strip: big, labeled switches for older eyes and ears */}
+        <View style={styles.settings}>
           <Pressable
             accessibilityRole="switch"
             accessibilityState={{ checked: largeText }}
             accessibilityLabel="Larger text"
             onPress={() => setLargeText(!largeText)}
-            style={[styles.pill, { backgroundColor: largeText ? colors.ink : colors.blue }]}
+            style={[styles.pill, { backgroundColor: largeText ? colors.ink : colors.white }]}
           >
-            <T size={17} weight="800" color={colors.white}>
+            <T size={17} weight="800" color={largeText ? colors.white : colors.blue}>
               Aa
             </T>
-            <T size={14} weight="700" color={colors.white}>
-              {largeText ? "Large: On" : "Larger text"}
+            <T size={14} weight="700" color={largeText ? colors.white : colors.ink}>
+              Larger text: {largeText ? "On" : "Off"}
+            </T>
+          </Pressable>
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityState={{ checked: autoRead }}
+            accessibilityLabel="Read results aloud"
+            onPress={() => setAutoRead(!autoRead)}
+            style={[styles.pill, { backgroundColor: autoRead ? colors.ink : colors.white }]}
+          >
+            <Ionicons name="volume-high" size={18} color={autoRead ? colors.white : colors.blue} />
+            <T size={14} weight="700" color={autoRead ? colors.white : colors.ink}>
+              Read aloud: {autoRead ? "On" : "Off"}
             </T>
           </Pressable>
         </View>
@@ -105,17 +121,22 @@ export default function Home() {
                 ["create-outline", "Type"],
               ] as [IconName, string][]
             ).map(([icon, label]) => (
-              <View key={label} style={styles.chip}>
+              <Pressable
+                key={label}
+                accessibilityRole="button"
+                onPress={() => router.push(label === "Photo" ? "/soon?title=Read a screenshot" : "/check")}
+                style={styles.chip}
+              >
                 <Ionicons name={icon} size={22} color={colors.white} />
                 <T size={13} weight="700" color={colors.white}>
                   {label}
                 </T>
-              </View>
+              </Pressable>
             ))}
           </View>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push("/soon?title=Check a message")}
+            onPress={() => router.push("/check")}
             style={({ pressed }) => [styles.heroButton, pressed && { opacity: 0.85 }]}
           >
             <T size={19} weight="800">
@@ -191,7 +212,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 10 },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   logo: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.blue, alignItems: "center", justifyContent: "center" },
-  pill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill },
+  settings: { flexDirection: "row", gap: 10, marginTop: 16 },
+  pill: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 12, borderRadius: radius.pill },
   hero: { marginTop: 20, backgroundColor: colors.blue, borderRadius: radius.card, padding: 20 },
   heroBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#C9F7DF", paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill },
   chips: { flexDirection: "row", gap: 10, marginTop: 16 },
