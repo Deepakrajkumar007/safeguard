@@ -1,7 +1,6 @@
 import { parse } from "tldts";
-import { domainToUnicode } from "node:url";
 import { BRANDS, RISKY_TLDS, SHORTENERS, USER_CONTENT_HOSTS, type Brand } from "./brands";
-import { editDistance, hasNonAscii, mapConfusables, skeleton } from "./strings";
+import { editDistance, hasNonAscii, hostToUnicode, mapConfusables, skeleton } from "./strings";
 import type { Evidence, LinkReport } from "./types";
 
 // Words that may sit next to a brand name in a fake domain: "mychase", "paypal-secure", "uspsdelivery".
@@ -224,13 +223,7 @@ export function analyzeLink(raw: string): LinkReport {
 
   const isPuny = hostname.split(".").some((l) => l.startsWith("xn--"));
   let unicodeHost = hostname;
-  if (isPuny) {
-    try {
-      unicodeHost = domainToUnicode(hostname) || hostname;
-    } catch {
-      /* keep punycode */
-    }
-  }
+  if (isPuny) unicodeHost = hostToUnicode(hostname);
 
   if (isPuny && hasNonAscii(unicodeHost)) {
     const mapped = mapConfusables(unicodeHost);

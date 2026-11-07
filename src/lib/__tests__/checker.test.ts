@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkMessage } from "../checker";
 import { extractPhones, extractUrls } from "../extract";
 import { analyzeLink } from "../url-analysis";
+import { hostToUnicode } from "../strings";
 
 // Real login/account pages. A false alarm on any of these is a demo-killer.
 const REAL_BRAND_LINKS = [
@@ -171,5 +172,17 @@ describe("wording", () => {
     const r = checkMessage("hello");
     expect(r.level).toBe("none");
     expect(`${r.headline} ${r.summary}`).not.toMatch(/\bsafe\b/i);
+  });
+});
+
+describe("punycode decoding (runs without Node's url module)", () => {
+  it.each([
+    ["xn--pple-43d.com", "\u0430pple.com"],
+    ["xn--mnchen-3ya.de", "m\u00fcnchen.de"],
+    ["www.xn--80ak6aa92e.com", "www.\u0430\u0440\u0440\u04cf\u0435.com"],
+    ["chase.com", "chase.com"],
+    ["xn--!!bad.com", "xn--!!bad.com"],
+  ])("%s", (input, expected) => {
+    expect(hostToUnicode(input)).toBe(expected);
   });
 });

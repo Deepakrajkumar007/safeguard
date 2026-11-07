@@ -45,9 +45,79 @@ const CONFUSABLES: Record<string, string> = {
 };
 
 export function mapConfusables(s: string): string {
+  let src = s;
+  try {
+    src = s.normalize("NFKC");
+  } catch {
+    /* some JS engines lack full Unicode normalization; the table below still applies */
+  }
   let out = "";
-  for (const ch of s.normalize("NFKC")) out += CONFUSABLES[ch] ?? ch;
+  for (const ch of src) out += CONFUSABLES[ch] ?? ch;
   return out;
+}
+
+// Punycode decoder (RFC 3492), so the checker runs on servers and phones without Node's "url" module.
+const PC = { base: 36, tMin: 1, tMax: 26, skew: 38, damp: 700, bias: 72, n: 128, maxInt: 0x7fffffff };
+
+function basicToDigit(cp: number): number {
+  if (cp >= 0x30 && cp < 0x3a) return 26 + (cp - 0x30);
+  if (cp >= 0x41 && cp < 0x5b) return cp - 0x41;
+  if (cp >= 0x61 && cp < 0x7b) return cp - 0x61;
+  return PC.base;
+}
+
+function adapt(delta: number, numPoints: number, firstTime: boolean): number {
+  let k = 0;
+  delta = firstTime ? Math.floor(delta / PC.damp) : delta >> 1;
+  delta += Math.floor(delta / numPoints);
+  const baseMinusTMin = PC.base - PC.tMin;
+  for (; delta > (baseMinusTMin * PC.tMax) >> 1; k += PC.base) delta = Math.floor(delta / baseMinusTMin);
+  return Math.floor(k + ((baseMinusTMin + 1) * delta) / (delta + PC.skew));
+}
+
+function decodePunycodeLabel(input: string): string {
+  const output: number[] = [];
+  let n = PC.n;
+  let i = 0;
+  let bias = PC.bias;
+  let basic = input.lastIndexOf("-");
+  if (basic < 0) basic = 0;
+  for (let j = 0; j < basic; j++) output.push(input.charCodeAt(j));
+  for (let index = basic > 0 ? basic + 1 : 0; index < input.length; ) {
+    const oldi = i;
+    for (let w = 1, k = PC.base; ; k += PC.base) {
+      if (index >= input.length) throw new Error("invalid punycode");
+      const digit = basicToDigit(input.charCodeAt(index++));
+      if (digit >= PC.base || digit > Math.floor((PC.maxInt - i) / w)) throw new Error("invalid punycode");
+      i += digit * w;
+      const t = k <= bias ? PC.tMin : k >= bias + PC.tMax ? PC.tMax : k - bias;
+      if (digit < t) break;
+      if (w > Math.floor(PC.maxInt / (PC.base - t))) throw new Error("invalid punycode");
+      w *= PC.base - t;
+    }
+    const out = output.length + 1;
+    bias = adapt(i - oldi, out, oldi === 0);
+    if (Math.floor(i / out) > PC.maxInt - n) throw new Error("invalid punycode");
+    n += Math.floor(i / out);
+    i %= out;
+    output.splice(i++, 0, n);
+  }
+  return String.fromCodePoint(...output);
+}
+
+/** "xn--pple-43d.com" -> "аpple.com". Labels that fail to decode are left as-is. */
+export function hostToUnicode(host: string): string {
+  return host
+    .split(".")
+    .map((label) => {
+      if (!label.toLowerCase().startsWith("xn--")) return label;
+      try {
+        return decodePunycodeLabel(label.slice(4).toLowerCase());
+      } catch {
+        return label;
+      }
+    })
+    .join(".");
 }
 
 export function hasNonAscii(s: string): boolean {
