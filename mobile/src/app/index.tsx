@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
-import { AppState, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme, View } from "react-native";
+import { AppState, Keyboard, Pressable, ScrollView, StyleSheet, Switch, TextInput, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button } from "@/components/Button";
 import { FeatureTile, StatGrid } from "@/components/Dashboard";
@@ -28,6 +28,7 @@ export default function Home() {
   const [checkError, setCheckError] = useState<string | null>(null);
 
   const check = async () => {
+    Keyboard.dismiss(); // close the keyboard so the result is visible
     if (!text.trim()) return;
     setBusy(true);
     setVerdict(null);
@@ -64,6 +65,7 @@ export default function Home() {
       scrollEventThrottle={16}
       automaticallyAdjustKeyboardInsets
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       contentContainerStyle={{ paddingBottom: spacing.xxl }}
     >
       <StatusBar style="light" />
@@ -130,6 +132,10 @@ export default function Home() {
                 setCheckError(null);
               }}
               multiline
+              // Return closes the keyboard and checks the message (a pasted message doesn't need new lines).
+              submitBehavior="blurAndSubmit"
+              returnKeyType="done"
+              onSubmitEditing={() => void check()}
               maxLength={5000}
               placeholder="Paste a text or email here"
               placeholderTextColor={colors.placeholder}

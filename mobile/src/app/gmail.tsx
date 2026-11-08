@@ -125,6 +125,7 @@ export default function GmailScreen() {
       scrollEventThrottle={16}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg }}
     >
       <StatusBar style="auto" />
