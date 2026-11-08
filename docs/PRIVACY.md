@@ -4,9 +4,10 @@ LinkGuard is a hackathon project. This note describes what the code does with yo
 
 ## The short version
 
-- **Messages you check are not stored** by LinkGuard, on the phone or the server, and the server doesn't log
-  message contents.
-- **The app checks messages on the phone.** The verdict doesn't need the internet.
+- **Messages and emails are not stored** by LinkGuard, and the server doesn't log their contents.
+- **Texts from trusted senders are ignored.** LinkGuard drops them before checking anything.
+- **Gmail scanning uses no AI**, reads only the last 24 hours, skips senders you choose, and sends the phone only
+  summaries (never email bodies).
 - Some features send data to other companies, always for that one feature, as listed below.
 - LinkGuard **never says a message is "safe"**. It reports warning signs it found, or that it found none.
 
@@ -14,15 +15,14 @@ LinkGuard is a hackathon project. This note describes what the code does with yo
 
 | Feature | What leaves your device | Who receives it | Stored by LinkGuard? |
 |---|---|---|---|
-| Check a message (app) | Nothing for the verdict | No one | No |
-| Google Safe Browsing check | **Only the links** in the message | LinkGuard server, then Google Safe Browsing | No (5-minute in-memory cache of link results) |
-| Explain it simply | The message and the checker's evidence | LinkGuard server, then **Google Gemini** | No |
-| Check a message (web) | The message | LinkGuard server (Vercel) | No |
-| Screenshot reading (web) | The screenshot image | LinkGuard server, then **Google Gemini** | No |
-| Open a site (app) | Your spoken words go through the **iPhone keyboard's dictation** (Apple's speech service) | Apple, per iOS settings | No |
-| Open a site (web) | Your voice goes through the **browser's speech service** (in Chrome, Google's servers) | Your browser vendor | No |
-| Scan my Gmail | Email from the **last 24 hours**, minus your never-scan senders, is read by the LinkGuard server | LinkGuard server (Google sends it) | No |
-| Text alerts (Shortcuts) | Each new text that matches your automation (e.g. contains `http`) | LinkGuard server, then Safe Browsing for its links | No |
+| Scan my Gmail (app) | Email from the **last 24 hours**, minus your never-scan senders, is read by the LinkGuard server | LinkGuard server (Google sends it); links may be checked with Google Safe Browsing | No |
+| Open a website safely (app) | Your spoken words go through the **iPhone keyboard's dictation** (Apple's speech service). The brand match happens on the phone | Apple, per iOS settings | No |
+| Text alerts (Shortcuts) | Each new text that matches your automation (e.g. contains `http`), plus its **sender** and your **trusted list** | LinkGuard server; if the sender isn't trusted, the rule-based checker runs and links go to Google Safe Browsing | No |
+| Trusted senders list | Kept in the iPhone **keychain**. You copy it into your Shortcut, which sends it with each text | LinkGuard server (to compare, then discarded) | No |
+| Never-scan list (Gmail) | Kept in the iPhone **keychain**, sent with each scan so Gmail excludes those senders | LinkGuard server, Gmail search | No |
+| Web app: check a message | The message | LinkGuard server (Vercel), Google Safe Browsing for links | No |
+| Web app: explain / screenshot | The message or screenshot and the checker's evidence | LinkGuard server, then **Google Gemini** | No |
+| Web app: open a site | Your voice goes through the **browser's speech service** (in Chrome, Google's servers) | Your browser vendor | No |
 
 Notes:
 - **Gemini free tier:** Google's pricing page says free-tier content is used to improve Google's products; paid-tier
@@ -53,6 +53,11 @@ Notes:
 Apple doesn't let apps read Messages. Text alerts work only through a Shortcuts automation **you** create, and you
 can delete it at any time (Shortcuts, Automation, swipe left). LinkGuard can't read old messages, block messages, or
 see texts the automation doesn't send.
+
+**Trusted senders.** In the current version, the Shortcut sends each matching text with its sender and your trusted
+list. If the sender is trusted, the server returns immediately: the text is not checked, logged, or stored. It does
+still travel to the server. The planned native Shortcuts action will compare the sender **on the phone**, so trusted
+senders' texts never leave it.
 
 ## Phone calls (future feature)
 
