@@ -12,7 +12,7 @@ const QUICK: { label: string; icon: IconName; color: string; href: Href }[] = [
   { label: "Screenshot", icon: "image", color: "#7C4DFF", href: "/soon?title=Read a screenshot" },
   { label: "Open a site", icon: "globe", color: "#0B9E6F", href: "/open" },
   { label: "Call guard", icon: "call", color: "#E0457B", href: "/soon?title=Call guard" },
-  { label: "Gmail", icon: "mail", color: "#E26B00", href: "/soon?title=Scan my Gmail" },
+  { label: "Gmail", icon: "mail", color: "#E26B00", href: "/gmail" },
 ];
 
 const FEATURES: { title: string; body: string; icon: IconName; bg: string; href: Href }[] = [
@@ -35,7 +35,7 @@ const FEATURES: { title: string; body: string; icon: IconName; bg: string; href:
     body: "Find scam emails hiding in your inbox.",
     icon: "mail-outline",
     bg: colors.mint,
-    href: "/soon?title=Scan my Gmail",
+    href: "/gmail",
   },
   {
     title: "Text message alerts",

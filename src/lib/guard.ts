@@ -63,3 +63,11 @@ export function guard(req: Request, route: string, perMinute: number): Response 
   }
   return null;
 }
+
+/** Rate limit only, for browser page loads (OAuth start/callback) that can't send the app key. */
+export function limitOnly(req: Request, route: string, perMinute: number): Response | null {
+  if (!allow(`${route}:${clientIp(req)}`, perMinute)) {
+    return new Response("Too many sign-in attempts. Please wait a minute and try again.", { status: 429 });
+  }
+  return null;
+}
