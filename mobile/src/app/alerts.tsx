@@ -1,26 +1,28 @@
 import { Ionicons } from "@expo/vector-icons";
-import * as Clipboard from "expo-clipboard";
-import { useEffect, useState } from "react";
+import * as AppIntents from "expo-app-intents";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Notifications from "expo-notifications";
+import { useFocusEffect } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useCallback, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { formatTrusted, parseTrusted, serializeTrusted, type TrustedEntry } from "@shared/trusted";
-import { apiBase } from "@/api";
-import { Button } from "@/components/Button";
+import { formatTrusted, parseTrusted, type TrustedEntry } from "@shared/trusted";
+import { Button, Notice } from "@/components/Button";
 import { IconTile, Row, Section } from "@/components/List";
 import { T, useSettings } from "@/settings";
+import { colors, radius, shadows, spacing, type } from "@/theme";
 import { loadTrusted, saveTrusted } from "@/trusted-store";
-import { colors, radius, spacing, type } from "@/theme";
 
 /**
- * Text-message alerts. Apple doesn't let apps read Messages, so the person builds a Shortcuts automation
- * once. It sends each new text with a link to LinkGuard's rule-based checker and shows a warning when
- * it's risky. Texts from trusted senders are ignored. Full guide: docs/IPHONE-TEXT-ALERTS.md
+ * Text-message alerts. Apple doesn't let apps read Messages, so the person adds ONE Shortcuts automation
+ * with LinkGuard's "Check Message with LinkGuard" action. That action (app-intents/CheckMessageIntent.swift)
+ * drops trusted senders on the phone, checks other texts with LinkGuard's rules, and shows a warning.
  */
-const STEPS: string[] = [
-  'Open Shortcuts → Automation → + → Message. Set "Message Contains" to http. Choose Run Immediately and turn off Notify When Run. Tap Next → New Blank Automation.',
-  "Add Get Contents of URL. Paste the server address. Method: POST. Add a header named x-linkguard-key and paste the app key.",
-  "Request Body: JSON. Add three Text fields: text = Shortcut Input; sender = Shortcut Input, then tap it and choose Sender; trusted = paste your trusted list.",
-  "Add Get Dictionary Value for show. Add If: Dictionary Value is yes.",
-  "Inside If: add Get Dictionary Value for notification, then Show Notification.",
+const STEPS: { title: string; detail: string }[] = [
+  { title: "Open Shortcuts and start an automation", detail: "Tap Automation at the bottom, then +, then Message. Choose Run Immediately, then New Blank Automation." },
+  { title: "Add LinkGuard's action", detail: 'Search for "LinkGuard" and tap Check Message with LinkGuard.' },
+  { title: "Fill in the two blue words", detail: "Tap Message and choose Shortcut Input. Tap Sender and choose Shortcut Input, then Sender." },
+  { title: "Tap Done", detail: "That's it. LinkGuard now warns you about risky texts, and ignores your trusted senders." },
 ];
 
 const KIND_ICON = { phone: "call", email: "mail", name: "person" } as const;
@@ -30,18 +32,29 @@ export default function AlertsScreen() {
   const [trusted, setTrusted] = useState<TrustedEntry[]>([]);
   const [draft, setDraft] = useState("");
   const [draftError, setDraftError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-  const server = `${apiBase() ?? "https://<your-server>"}/api/shortcut`;
-  const key = process.env.EXPO_PUBLIC_LINKGUARD_KEY ?? "";
+  const [notifOn, setNotifOn] = useState<boolean | null>(null);
+  const [tested, setTested] = useState(false);
+  const native = AppIntents.isAvailable();
 
-  useEffect(() => {
-    void loadTrusted().then(setTrusted);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void loadTrusted().then(setTrusted);
+      void Notifications.getPermissionsAsync().then((p) => setNotifOn(p.granted));
+    }, []),
+  );
 
-  const copy = async (label: string, value: string) => {
-    await Clipboard.setStringAsync(value);
-    setCopied(label);
-    setTimeout(() => setCopied(null), 2500);
+  const enableNotifications = async () => {
+    const p = await Notifications.requestPermissionsAsync();
+    setNotifOn(p.granted);
+    if (!p.granted) void Linking.openSettings();
+  };
+
+  const sendTest = async () => {
+    await Notifications.scheduleNotificationAsync({
+      content: { title: "LinkGuard: High risk text", body: "Looks like a fake delivery notice. Don't tap the link. (This is a test.)" },
+      trigger: null,
+    });
+    setTested(true);
   };
 
   const add = async () => {
@@ -73,27 +86,82 @@ export default function AlertsScreen() {
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg }}
     >
-      <T variant="callout" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
-        Apple doesn&apos;t let apps read your messages. You set up a Shortcut once. It sends new texts that contain a link to
-        LinkGuard, which warns you if one looks like a scam.
-      </T>
+      <StatusBar style="dark" />
 
-      {/* What the warning looks like */}
-      <View style={styles.preview} accessible accessibilityLabel="Example warning: LinkGuard, high risk text. Looks like a fake delivery notice. Don't tap the link.">
-        <IconTile icon="shield-checkmark" color={colors.blue} />
-        <View style={{ flex: 1 }}>
-          <T variant="subhead" weight="600">
-            LinkGuard: High risk text
-          </T>
-          <T variant="footnote" color={colors.muted}>
-            Looks like a fake delivery notice. Don&apos;t tap the link.
-          </T>
+      {/* Status card */}
+      <LinearGradient colors={colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.status}>
+        <T variant="title" color={colors.white}>
+          Get warned about scam texts
+        </T>
+        <T variant="callout" color={colors.onGradientMuted}>
+          Apple doesn&apos;t let apps read your messages, so you add one Shortcut. Texts from your trusted senders never leave this
+          iPhone.
+        </T>
+        <View style={styles.statusRow}>
+          <View style={styles.pill}>
+            <Ionicons name={notifOn ? "notifications" : "notifications-off"} size={16} color={colors.white} />
+            <T variant="footnote" weight="600" color={colors.white}>
+              Notifications {notifOn ? "on" : "off"}
+            </T>
+          </View>
+          <View style={styles.pill}>
+            <Ionicons name="people" size={16} color={colors.white} />
+            <T variant="footnote" weight="600" color={colors.white}>
+              {trusted.length} trusted
+            </T>
+          </View>
         </View>
+      </LinearGradient>
+
+      {notifOn === false && (
+        <View style={{ gap: spacing.smd }}>
+          <Notice tone="caution" icon="notifications-off">
+            Notifications are off, so LinkGuard can&apos;t warn you. Turn them on first.
+          </Notice>
+          <Button title="Turn on notifications" icon="notifications" onPress={enableNotifications} />
+        </View>
+      )}
+
+      {!native && (
+        <Notice tone="caution" icon="information-circle">
+          The LinkGuard Shortcuts action needs the installed LinkGuard app (it isn&apos;t available inside Expo Go).
+        </Notice>
+      )}
+
+      {/* Setup steps */}
+      <View style={{ gap: spacing.smd }}>
+        <T variant="headline" style={{ marginHorizontal: spacing.xs }} accessibilityRole="header">
+          Set it up once (2 minutes)
+        </T>
+        {STEPS.map((s, i) => (
+          <View key={i} style={styles.stepCard}>
+            <View style={styles.num}>
+              <T variant="headline" color={colors.violet}>
+                {i + 1}
+              </T>
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <T variant="headline">{s.title}</T>
+              <T variant="subhead" color={colors.muted}>
+                {s.detail}
+              </T>
+            </View>
+          </View>
+        ))}
+        <Button title="Open Shortcuts" icon="open-outline" onPress={() => Linking.openURL("shortcuts://")} />
+        <Button
+          variant="secondary"
+          title={tested ? "Test warning sent" : "Send a test warning"}
+          icon={tested ? "checkmark" : "notifications-outline"}
+          disabled={notifOn === false}
+          onPress={sendTest}
+        />
       </View>
 
+      {/* Trusted senders */}
       <Section
         title="Trusted senders"
-        footer="LinkGuard ignores texts from these people. They are never checked or saved. Use a phone number, an iCloud email, or a contact name exactly as Messages shows it. After changing this list, copy it into your Shortcut again."
+        footer="LinkGuard ignores texts from these people. The check happens on this iPhone, so their texts are never sent anywhere. Use a phone number, an iCloud email, or a contact name exactly as Messages shows it."
       >
         {trusted.map((t) => (
           <Row
@@ -132,62 +200,41 @@ export default function AlertsScreen() {
         </View>
       </Section>
       {draftError && (
-        <T variant="footnote" weight="600" color={colors.risk.high.fg} style={{ marginHorizontal: spacing.md, marginTop: -spacing.md }}>
+        <T variant="footnote" weight="600" color={colors.risk.high.fg} style={{ marginHorizontal: spacing.xs, marginTop: -spacing.md }}>
           {draftError}
         </T>
       )}
 
-      <Section title="Set up the Shortcut (about 5 minutes)">
-        {STEPS.map((s, i) => (
-          <View key={i} style={styles.step}>
-            <View style={styles.num}>
-              <T variant="subhead" weight="700" color={colors.blue}>
-                {i + 1}
-              </T>
-            </View>
-            <T variant="callout" style={{ flex: 1 }}>
-              {s}
-            </T>
-          </View>
-        ))}
-      </Section>
-
-      <View style={{ gap: spacing.smd }}>
-        <Button variant="secondary" icon={copied === "server" ? "checkmark" : "copy-outline"} title={copied === "server" ? "Copied" : "Copy server address"} onPress={() => copy("server", server)} />
-        {key.length > 0 && (
-          <Button variant="secondary" icon={copied === "key" ? "checkmark" : "key-outline"} title={copied === "key" ? "Copied" : "Copy app key"} onPress={() => copy("key", key)} />
-        )}
-        <Button
-          variant="secondary"
-          icon={copied === "trusted" ? "checkmark" : "people-outline"}
-          title={copied === "trusted" ? "Copied" : `Copy trusted list (${trusted.length})`}
-          disabled={trusted.length === 0}
-          onPress={() => copy("trusted", serializeTrusted(trusted))}
-        />
-        <Button variant="dark" icon="open-outline" title="Open Shortcuts" onPress={() => Linking.openURL("shortcuts://")} />
-      </View>
-
-      <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.md }}>
-        Privacy: other texts are checked by LinkGuard&apos;s rules only. No AI, and nothing is saved. Texts from trusted senders
-        pass through LinkGuard&apos;s server and are dropped right away without being read. Texts without a link (like
-        &quot;Grandma, I need bail money&quot;) don&apos;t trigger the Shortcut.
+      <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
+        Privacy: other texts are checked by LinkGuard&apos;s rules only (no AI) and nothing is saved. Tip: in step 1 you can set
+        &quot;Message Contains&quot; to http so only texts with links are checked.
       </T>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  preview: {
+  status: { borderRadius: radius.xxl, borderCurve: "continuous", padding: spacing.mdl, gap: spacing.smd, boxShadow: shadows.raised },
+  statusRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  pill: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.xs,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.smd,
+    paddingVertical: spacing.xs,
+  },
+  stepCard: {
+    flexDirection: "row",
     gap: spacing.smd,
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderCurve: "continuous",
     padding: spacing.md,
+    boxShadow: shadows.card,
   },
+  num: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.violetSoft, alignItems: "center", justifyContent: "center" },
   addRow: { flexDirection: "row", alignItems: "center", gap: spacing.smd, paddingHorizontal: spacing.md, minHeight: 56 },
   addInput: { flex: 1, color: colors.ink, paddingVertical: spacing.smd },
-  step: { flexDirection: "row", gap: spacing.smd, paddingHorizontal: spacing.md, paddingVertical: spacing.smd },
-  num: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.blueSoft, alignItems: "center", justifyContent: "center" },
 });

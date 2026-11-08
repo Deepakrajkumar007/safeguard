@@ -1,13 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { T } from "@/settings";
-import { colors, radius, spacing } from "@/theme";
+import { colors, radius, shadows, spacing } from "@/theme";
 import type { IconName } from "./List";
 
 const variants = {
-  primary: { bg: colors.blue, fg: colors.white, border: colors.blue },
-  dark: { bg: colors.ink, fg: colors.white, border: colors.ink },
-  secondary: { bg: colors.card, fg: colors.blue, border: colors.blueSoft },
+  primary: { fg: colors.white }, // brand gradient
+  secondary: { fg: colors.blue },
+  dark: { fg: colors.white },
 } as const;
 
 /** Big, full-width button. Large touch target for older hands. */
@@ -30,7 +31,7 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   accessibilityRole?: "button" | "link";
 }) {
-  const v = variants[variant];
+  const fg = variants[variant].fg;
   return (
     <Pressable
       accessibilityRole={accessibilityRole}
@@ -40,13 +41,19 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
-        { backgroundColor: v.bg, borderColor: v.border, opacity: disabled ? 0.45 : pressed ? 0.75 : 1 },
+        variant === "secondary" && styles.secondary,
+        variant === "dark" && { backgroundColor: colors.ink },
+        variant === "primary" && { boxShadow: shadows.raised },
+        { opacity: disabled ? 0.45 : pressed ? 0.8 : 1 },
         style,
       ]}
     >
+      {variant === "primary" && (
+        <LinearGradient colors={colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.round]} />
+      )}
       <View style={styles.inner}>
-        {loading ? <ActivityIndicator color={v.fg} /> : icon ? <Ionicons name={icon} size={20} color={v.fg} /> : null}
-        <T variant="headline" color={v.fg}>
+        {loading ? <ActivityIndicator color={fg} /> : icon ? <Ionicons name={icon} size={20} color={fg} /> : null}
+        <T variant="headline" color={fg}>
           {title}
         </T>
       </View>
@@ -68,7 +75,9 @@ export function Notice({ tone, icon, children }: { tone: "caution" | "high" | "n
 }
 
 const styles = StyleSheet.create({
-  base: { minHeight: 54, borderRadius: radius.md, borderCurve: "continuous", borderWidth: 2, justifyContent: "center", paddingHorizontal: spacing.md },
+  base: { minHeight: 56, borderRadius: radius.lg, borderCurve: "continuous", justifyContent: "center", paddingHorizontal: spacing.md, overflow: "hidden" },
+  round: { borderRadius: radius.lg },
+  secondary: { backgroundColor: colors.card, boxShadow: shadows.card },
   inner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
-  notice: { flexDirection: "row", gap: spacing.smd, padding: spacing.md, borderRadius: radius.lg, borderCurve: "continuous", alignItems: "flex-start" },
+  notice: { flexDirection: "row", gap: spacing.smd, padding: spacing.md, borderRadius: radius.xl, borderCurve: "continuous", alignItems: "flex-start" },
 });

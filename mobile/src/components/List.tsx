@@ -2,18 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { Children, Fragment, isValidElement, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { T } from "@/settings";
-import { colors, radius, spacing } from "@/theme";
+import { colors, radius, shadows, spacing } from "@/theme";
 
 export type IconName = keyof typeof Ionicons.glyphMap;
 
-/** iOS inset-grouped section: small header, white rounded group with hairline separators, optional footer. */
+/** A titled group: soft white card with hairline separators between rows, optional footer. */
 export function Section({ title, footer, children }: { title?: string; footer?: ReactNode; children: ReactNode }) {
   const rows = Children.toArray(children).filter((c) => isValidElement(c));
   return (
-    <View style={{ gap: spacing.sm }}>
+    <View style={{ gap: spacing.smd }}>
       {title && (
-        <T variant="footnote" color={colors.muted} style={styles.sectionTitle} accessibilityRole="header">
-          {title.toUpperCase()}
+        <T variant="headline" style={styles.sectionTitle} accessibilityRole="header">
+          {title}
         </T>
       )}
       <View style={styles.group}>
@@ -33,7 +33,7 @@ export function Section({ title, footer, children }: { title?: string; footer?: 
   );
 }
 
-/** Colored rounded-square icon, like iOS Settings rows. */
+/** Colored rounded-square icon for list rows. */
 export function IconTile({ icon, color }: { icon: IconName; color: string }) {
   return (
     <View style={[styles.tile, { backgroundColor: color }]}>
@@ -42,7 +42,7 @@ export function IconTile({ icon, color }: { icon: IconName; color: string }) {
   );
 }
 
-/** A brand's first letter in a soft circle (used instead of A/B/C badges). */
+/** A brand's first letter in a soft circle. */
 export function InitialBadge({ name, size = 36 }: { name: string; size?: number }) {
   return (
     <View style={[styles.initial, { width: size, height: size, borderRadius: size / 2 }]}>
@@ -97,10 +97,10 @@ export function Row({
 }
 
 const styles = StyleSheet.create({
-  sectionTitle: { marginHorizontal: spacing.md, letterSpacing: 0.4 },
-  group: { backgroundColor: colors.card, borderRadius: radius.lg, borderCurve: "continuous", overflow: "hidden" },
+  sectionTitle: { marginHorizontal: spacing.xs },
+  group: { backgroundColor: colors.card, borderRadius: radius.xl, borderCurve: "continuous", overflow: "hidden", boxShadow: shadows.card },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: colors.separator, marginLeft: spacing.md },
-  footer: { marginHorizontal: spacing.md },
+  footer: { marginHorizontal: spacing.xs },
   row: { flexDirection: "row", alignItems: "center", gap: spacing.smd, paddingHorizontal: spacing.md, paddingVertical: spacing.smd, minHeight: 56 },
   tile: { width: 32, height: 32, borderRadius: radius.sm, borderCurve: "continuous", alignItems: "center", justifyContent: "center" },
   initial: { backgroundColor: colors.blueSoft, alignItems: "center", justifyContent: "center" },

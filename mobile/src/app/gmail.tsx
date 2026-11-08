@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { Button, Notice } from "@/components/Button";
-import { IconTile, Row, Section } from "@/components/List";
+import { Card, Chip, Ring } from "@/components/Dashboard";
+import { Row, Section } from "@/components/List";
 import {
   cleanSkipEntry,
   getSession,
@@ -17,6 +19,7 @@ import {
 } from "@/gmail";
 import { T, useSettings } from "@/settings";
 import { speak } from "@/speech";
+import { loadLastScan, saveLastScan, timeAgo, type LastScan } from "@/stats-store";
 import { colors, radius, spacing, type } from "@/theme";
 
 export default function GmailScreen() {
@@ -29,11 +32,13 @@ export default function GmailScreen() {
   const [draft, setDraft] = useState("");
   const [draftError, setDraftError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const [last, setLast] = useState<LastScan | null>(null);
 
   useEffect(() => {
     void (async () => {
       setSignedIn(Boolean(await getSession()));
       setSkip(await loadSkipList());
+      setLast(await loadLastScan());
     })();
   }, []);
 
@@ -49,6 +54,9 @@ export default function GmailScreen() {
         return;
       }
       setResult(r.data);
+      const summary = { scanned: r.data.scanned, flagged: r.data.flagged.length, verified: r.data.verifiedCount, at: Date.now() };
+      setLast(summary);
+      void saveLastScan(summary);
       await notifyFlagged(r.data.flagged.length);
       if (autoRead) {
         const n = r.data.flagged.length;
@@ -100,16 +108,52 @@ export default function GmailScreen() {
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg }}
     >
-      <T variant="callout" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
-        LinkGuard checks your recent emails for scams and shows which ones to be careful with.
-      </T>
+      <StatusBar style="dark" />
+      <Card>
+        <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
+          {(() => {
+            const scanned = result?.scanned ?? last?.scanned ?? 0;
+            const flagged = result ? result.flagged.length : (last?.flagged ?? 0);
+            const has = Boolean(result || last);
+            return (
+              <Ring progress={has && scanned ? Math.max(0.04, flagged / scanned) : 0} tone={has ? (flagged ? "high" : "none") : "brand"}>
+                {has ? (
+                  <>
+                    <T variant="largeTitle" color={flagged ? colors.risk.high.fg : colors.risk.none.fg}>
+                      {flagged}
+                    </T>
+                    <T variant="subhead" color={colors.muted} style={{ textAlign: "center" }}>
+                      {flagged === 1 ? "risky email" : "risky emails"}
+                    </T>
+                    <T variant="footnote" color={colors.muted} style={{ textAlign: "center" }}>
+                      of {scanned} checked
+                    </T>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="mail" size={36} color={colors.violet} />
+                    <T variant="subhead" color={colors.muted} style={{ textAlign: "center" }}>
+                      Not scanned yet
+                    </T>
+                  </>
+                )}
+              </Ring>
+            );
+          })()}
+          <T variant="footnote" color={colors.muted} style={{ textAlign: "center" }}>
+            {result || last
+              ? `Last 24 hours · ${(result?.verifiedCount ?? last?.verified) || 0} from verified senders · scanned ${last ? timeAgo(last.at) : "just now"}`
+              : "LinkGuard checks your recent emails for scams and shows which ones to be careful with."}
+          </T>
+        </View>
+      </Card>
 
-      <Section title="Your privacy">
-        <Row left={<IconTile icon="time" color={colors.tile.web} />} title="Only the last 24 hours" />
-        <Row left={<IconTile icon="eye-off" color={colors.tile.web} />} title="Skips senders you choose" />
-        <Row left={<IconTile icon="hardware-chip" color={colors.tile.web} />} title="Checked by rules, not AI" />
-        <Row left={<IconTile icon="timer" color={colors.tile.web} />} title="Access ends within 1 hour" />
-      </Section>
+      <View style={{ flexDirection: "row", gap: spacing.sm }}>
+        <Chip icon="time" label="24 hours only" active />
+        <Chip icon="eye-off" label="Skips senders" active />
+        <Chip icon="hardware-chip" label="Rules, not AI" active />
+        <Chip icon="timer" label="1-hour access" active />
+      </View>
 
       <View style={{ gap: spacing.smd }}>
         <Button
@@ -148,14 +192,6 @@ export default function GmailScreen() {
 
       {result && (
         <>
-          <Section>
-            <Row
-              left={<IconTile icon={result.flagged.length ? "warning" : "shield-checkmark"} color={result.flagged.length ? colors.risk.high.fg : colors.risk.none.fg} />}
-              title={result.flagged.length ? `${result.flagged.length} risky ${result.flagged.length === 1 ? "email" : "emails"}` : "No red flags found"}
-              subtitle={`${result.scanned} checked from the last 24 hours · ${result.verifiedCount} from verified senders`}
-            />
-          </Section>
-
           {result.flagged.length > 0 ? (
             <Section title="Risky emails" footer="Don't click links or open attachments in these. In Gmail, open the email, tap ⋮, then Report phishing.">
               {result.flagged.map((v) => (
@@ -163,7 +199,7 @@ export default function GmailScreen() {
               ))}
             </Section>
           ) : (
-            <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.md }}>
+            <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
               That isn&apos;t a guarantee, so keep being careful with links.
             </T>
           )}
@@ -215,7 +251,7 @@ export default function GmailScreen() {
         </T>
       )}
 
-      <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.md }}>
+      <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
         Google asks LinkGuard for permission to read your email. LinkGuard&apos;s own code limits itself to the last 24 hours and
         skips your never-scan list. Email contents are checked in memory and never saved.
       </T>

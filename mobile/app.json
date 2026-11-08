@@ -29,8 +29,16 @@
       "expo-audio",
       "expo-secure-store",
       "expo-web-browser",
-      "./plugins/withoutPushEntitlement.js"
+      "./plugins/withoutPushEntitlement.js",
+      "expo-app-intents"
     ],
-    "scheme": "linkguard"
+    "scheme": "linkguard",
+    "experiments": {
+      "inlineModules": {
+        "watchedDirectories": [
+          "app-intents"
+        ]
+      }
+    }
   }
 }

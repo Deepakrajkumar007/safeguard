@@ -1,14 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useMemo, useRef, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputInstance } from "react-native";
 import type { Brand } from "@shared/brands";
 import { matchSpoken, POPULAR, spokenAddress } from "@shared/launcher";
 import { Button, Notice } from "@/components/Button";
-import { InitialBadge, Row, Section } from "@/components/List";
+import { InitialBadge } from "@/components/List";
 import { T, useSettings } from "@/settings";
 import { speak } from "@/speech";
-import { colors, radius, spacing, type } from "@/theme";
+import { colors, radius, shadows, spacing, type } from "@/theme";
 
 /**
  * Voice launcher. The person says or types a NAME ("Chase"). We show the real address from the
@@ -37,10 +39,25 @@ export default function OpenSite() {
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg }}
     >
-      <View style={{ gap: spacing.sm }}>
-        <T variant="callout" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
-          Tap the box, then the microphone on your keyboard, and say a name like &quot;Chase&quot;.
+      <StatusBar style="dark" />
+      {/* Big mic button: opens the keyboard so you can tap its microphone and say a name. */}
+      <View style={{ alignItems: "center", gap: spacing.smd, paddingTop: spacing.sm }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Say a website name"
+          onPress={() => inputRef.current?.focus()}
+          style={({ pressed }) => [styles.micOuter, { opacity: pressed ? 0.85 : 1 }]}
+        >
+          <LinearGradient colors={colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.micInner}>
+            <Ionicons name="mic" size={44} color={colors.white} />
+          </LinearGradient>
+        </Pressable>
+        <T variant="callout" color={colors.muted} style={{ textAlign: "center", marginHorizontal: spacing.lg }}>
+          Tap the microphone, then the mic on your keyboard, and say a name like &quot;Chase&quot;.
         </T>
+      </View>
+
+      <View style={{ gap: spacing.sm }}>
         <View style={styles.field}>
           <Ionicons name="mic" size={22} color={colors.blue} />
           <TextInput
@@ -114,18 +131,32 @@ export default function OpenSite() {
       )}
 
       {options.length > 0 && (
-        <Section title={said.trim() ? (match.brand ? "Or did you mean" : "Did you mean") : "Popular sites"}>
-          {options.map((b) => (
-            <Row
-              key={b.id}
-              left={<InitialBadge name={b.name} />}
-              title={b.name}
-              subtitle={b.launchUrl.replace(/^https:\/\//, "")}
-              accessibilityLabel={`${b.name}, ${b.launchUrl}`}
-              onPress={() => choose(b)}
-            />
-          ))}
-        </Section>
+        <View style={{ gap: spacing.smd }}>
+          <T variant="headline" style={{ marginHorizontal: spacing.xs }} accessibilityRole="header">
+            {said.trim() ? (match.brand ? "Or did you mean" : "Did you mean") : "Popular sites"}
+          </T>
+          <View style={styles.grid}>
+            {options.map((b) => (
+              <Pressable
+                key={b.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${b.name}, ${b.launchUrl}`}
+                onPress={() => choose(b)}
+                style={({ pressed }) => [styles.siteCard, pressed && { backgroundColor: colors.pressed }]}
+              >
+                <InitialBadge name={b.name} />
+                <View style={{ flex: 1 }}>
+                  <T variant="subhead" weight="600" numberOfLines={1}>
+                    {b.name}
+                  </T>
+                  <T variant="caption" color={colors.muted} numberOfLines={1}>
+                    {b.launchUrl.replace(/^https:\/\/(www\.)?/, "")}
+                  </T>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        </View>
       )}
 
       {said.trim().length > 0 && !chosen && !match.unknownAddress && options.length === 0 && (
@@ -138,9 +169,25 @@ export default function OpenSite() {
 }
 
 const styles = StyleSheet.create({
+  micOuter: { width: 132, height: 132, borderRadius: 66, backgroundColor: colors.card, boxShadow: shadows.raised, alignItems: "center", justifyContent: "center" },
+  micInner: { width: 104, height: 104, borderRadius: 52, alignItems: "center", justifyContent: "center" },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.smd },
+  siteCard: {
+    width: "48%",
+    flexGrow: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderCurve: "continuous",
+    padding: spacing.smd,
+    boxShadow: shadows.card,
+  },
   field: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    boxShadow: shadows.card,
+    borderRadius: radius.xl,
     borderCurve: "continuous",
     paddingHorizontal: spacing.md,
     flexDirection: "row",
@@ -162,7 +209,8 @@ const styles = StyleSheet.create({
   },
   answer: {
     backgroundColor: colors.card,
-    borderRadius: radius.lg,
+    boxShadow: shadows.card,
+    borderRadius: radius.xxl,
     borderCurve: "continuous",
     padding: spacing.md,
     gap: spacing.md,
