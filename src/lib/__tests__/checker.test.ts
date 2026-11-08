@@ -92,6 +92,7 @@ describe("real messages: no caution or high", () => {
     "CVS Pharmacy: Your prescription is ready for pickup.",
     "Microsoft will never ask you to share your password or code.",
     "Your Netflix membership renews on Dec 1. Manage it at https://www.netflix.com/account",
+    "Get the app on Google Play or the App Store. Pay with Apple Card or PayPal.",
   ];
   for (const m of messages) {
     it(m.slice(0, 60), () => {
@@ -121,6 +122,16 @@ describe("scam messages: high risk with the right scam type", () => {
       expect(r.headline).not.toMatch(/safe/i);
     });
   }
+});
+
+describe("gift card requests are still caught", () => {
+  it.each([
+    "Go to Walmart and buy Google Play cards, then read me the numbers",
+    "Pay the fine with iTunes cards today",
+    "Please get 4 Amazon gift cards and send photos",
+  ])("%s", (m) => {
+    expect(checkMessage(m).evidence.map((e) => e.id)).toContain("text.gift_cards");
+  });
 });
 
 describe("tricky links", () => {

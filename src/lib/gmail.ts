@@ -1,7 +1,7 @@
 import { parse } from "tldts";
-import { checkMessage, levelFor } from "./checker";
+import { brandsMentioned, checkMessage, levelFor } from "./checker";
 import { analyzeLink, officialBrandFor } from "./url-analysis";
-import type { Level } from "./types";
+import type { Evidence, Level } from "./types";
 
 /**
  * Gmail scanning (server-only). Privacy limits are enforced HERE, in the Gmail search itself:
@@ -149,6 +149,14 @@ function isEmailService(url: string): boolean {
   return d ? EMAIL_SERVICE_DOMAINS.has(d) : false;
 }
 
+// Signals strong enough on their own to call an email risky.
+const STRONG_EMAIL_SIGNALS = new Set([
+  "email.sender_mismatch", "link.brand_disguise", "link.brand_in_name", "link.brand_lookalike", "link.brand_misspelled",
+  "link.idn_lookalike", "link.at_trick", "link.ip_address", "text.gift_cards", "text.wire_crypto", "text.cash_courier",
+  "text.asks_code", "text.asks_personal", "text.remote_access", "text.gov_threat", "text.family_emergency",
+  "text.pay_to_get", "text.tech_support",
+]);
+
 export interface EmailVerdict {
   id: string;
   from: string;
@@ -184,20 +192,48 @@ export function judgeEmail(e: ParsedEmail): EmailVerdict {
   const textLinks = e.text.split(/\s+/).filter((w) => /^https?:\/\//i.test(w) && isEmailService(w));
   let body = e.text;
   for (const l of textLinks) body = body.split(l).join(" ");
-  // The sender's display name goes in with the text ("Chase Security"), but the sender's ADDRESS is checked
-  // on its own below, so a normal sender domain isn't mistaken for a suspicious link.
-  const displayName = e.from.replace(/<[^>]*>/g, "").replace(/"/g, "").trim();
-  const forChecker = [`From: ${displayName}`, `Subject: ${e.subject}`, "", body, ...links].join("\n").slice(0, 5000);
+  // Emails differ from texts: lots of links, brand logos in footers, and marketing language.
+  // 1. Check the subject + body + links, but drop the generic "mentions a brand, link isn't that brand"
+  //    rule: footers mention PayPal / App Store / Google Play all the time.
+  const forChecker = [`Subject: ${e.subject}`, "", body, ...links].join("\n").slice(0, 5000);
   const r = checkMessage(forChecker);
+  const fromBody = r.evidence.filter((x) => !x.good && x.id !== "text.brand_mismatch");
 
+  // 2. Each link rule counts once (its strongest instance), so 10 tracking links don't add up.
+  const strongestLink = new Map<string, Evidence>();
+  for (const x of fromBody.filter((x) => x.source === "link")) {
+    const prev = strongestLink.get(x.id);
+    if (!prev || x.weight > prev.weight) strongestLink.set(x.id, x);
+  }
+  const wording = fromBody.filter((x) => x.source !== "link");
+
+  // 3. The sender: look-alike address checks, plus "claims to be X (display name) but the address isn't X".
+  const displayName = e.from.replace(/<[^>]*>/g, "").replace(/"/g, "").trim();
   const senderDomain = e.fromAddress.split("@")[1] ?? "";
-  const senderEvidence = senderDomain
+  const senderRegistrable = parse(senderDomain).domain ?? "";
+  const senderEvidence: Evidence[] = senderDomain
     ? analyzeLink(`https://${senderDomain}`)
         .evidence.filter((x) => x.weight > 0 && !["link.login_words", "link.many_dashes"].includes(x.id))
         .map((x) => ({ ...x, detail: `Sender address (${e.fromAddress}): ${x.detail}` }))
     : [];
-  const risky = [...senderEvidence, ...r.evidence.filter((x) => !x.good)].sort((a, b) => b.weight - a.weight);
-  const score = Math.min(100, risky.reduce((sum, x) => sum + x.weight, 0));
+  const claimed = brandsMentioned(displayName).filter((b) => !b.domains.includes(senderRegistrable));
+  if (claimed.length && senderDomain) {
+    const b = claimed[0];
+    senderEvidence.push({
+      id: "email.sender_mismatch",
+      source: "link",
+      title: `Says it's from ${b.name}, but the sender isn't`,
+      detail: `The sender name says "${displayName}", but it was sent from ${e.fromAddress}. Real ${b.name} emails come from ${b.domains[0]}.`,
+      weight: 40,
+      scamType: "phishing_link",
+    });
+  }
+
+  const risky = [...senderEvidence, ...strongestLink.values(), ...wording].sort((a, b) => b.weight - a.weight);
+  let score = Math.min(100, risky.reduce((sum, x) => sum + x.weight, 0));
+  // 4. Marketing words alone ("today only", "claim your reward") never make an email "risky".
+  //    It also needs a real danger sign: a disguised link/sender or a scam payment/data request.
+  if (!risky.some((x) => STRONG_EMAIL_SIGNALS.has(x.id))) score = Math.min(score, 29);
   const level = levelFor(score, risky.length > 0);
   return {
     ...base,

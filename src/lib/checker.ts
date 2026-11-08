@@ -41,7 +41,7 @@ function escapeRe(s: string): string {
 }
 
 /** Brands the message claims to be from, e.g. "Chase: your account is locked". */
-function brandsMentioned(text: string) {
+export function brandsMentioned(text: string) {
   return BRANDS.filter((b) =>
     (b.textNames ?? []).some((name) => {
       const flags = b.commonWord ? "" : "i";

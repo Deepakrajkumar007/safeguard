@@ -149,4 +149,73 @@ describe("email verdicts", () => {
     );
     expect(["none", "low"]).toContain(v.level);
   });
+
+  // --- Real-looking legitimate emails that used to risk false alarms ---
+  it("store promo with many account links, urgency words, and app-store footer stays calm", () => {
+    const manyLinks = Array.from({ length: 12 }, (_, i) => `<a href="https://www.examplestore.com/account/orders?item=${i}">Item ${i}</a>`).join(" ");
+    const v = judgeEmail(
+      parseGmailMessage(
+        message(
+          "Example Store <deals@examplestore.com>",
+          "Today only: 30% off everything. Last chance!",
+          `<p>Act now, this sale expires today. Log in to your account to see your deals.</p>${manyLinks}
+           <p>Download on the App Store · Get it on Google Play · Pay with PayPal</p>
+           <a href="https://apps.apple.com/us/app/example/id123">App Store</a>
+           <a href="https://play.google.com/store/apps/details?id=com.example">Google Play</a>`,
+        ),
+      ),
+    );
+    expect(["none", "low"], JSON.stringify(v.reasons)).toContain(v.level);
+  });
+
+  it("rewards email with 'congratulations, claim your reward' stays calm", () => {
+    const v = judgeEmail(
+      parseGmailMessage(
+        message(
+          "Coffee Club Rewards <rewards@coffeeclub.com>",
+          "Congratulations! You've earned a $10 reward",
+          '<p>Congratulations! Claim your reward before it expires today.</p><a href="https://www.coffeeclub.com/rewards">Claim</a>',
+        ),
+      ),
+    );
+    expect(["none", "low"], JSON.stringify(v.reasons)).toContain(v.level);
+  });
+
+  it("receipt from a store that mentions PayPal in the subject isn't a fake-PayPal alert", () => {
+    const v = judgeEmail(
+      parseGmailMessage(
+        message("Etsy <transaction@etsy.com>", "Your PayPal payment to Etsy", '<p>Thanks for your order.</p><a href="https://www.etsy.com/your/purchases">View order</a>'),
+      ),
+    );
+    expect(["none", "low"], JSON.stringify(v.reasons)).toContain(v.level);
+  });
+
+  // --- Scams must still be caught ---
+  it("catches a display-name spoof: 'PayPal' sent from a random address", () => {
+    const v = judgeEmail(
+      parseGmailMessage(
+        message(
+          "PayPal Service <service@account-review-center.com>",
+          "Action needed",
+          '<p>Your account has been limited. Confirm your identity to restore access.</p><a href="https://account-review-center.com/login">Restore access</a>',
+        ),
+      ),
+    );
+    expect(v.level).toBe("high");
+    expect(v.reasons.map((r) => r.title).join(" ")).toContain("Says it's from PayPal");
+  });
+
+  it("catches a no-link gift card scam from a free email address", () => {
+    const v = judgeEmail(
+      parseGmailMessage(
+        message(
+          "Pastor Mike <pastor.mike.church@gmail.com>",
+          "Quick favor",
+          "<p>Are you available? I need you to buy 4 gift cards for a church member in the hospital. Send me photos of the codes on the back. Please keep this between us.</p>",
+        ),
+      ),
+    );
+    expect(["caution", "high"]).toContain(v.level);
+  });
 });
+

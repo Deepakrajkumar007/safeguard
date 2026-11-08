@@ -190,7 +190,8 @@ const RULES: Rule[] = [
     detail: "No real company, bank, or government agency asks you to pay with gift cards.",
     weight: 35,
     patterns: [
-      /(?:pay|send|buy|purchase|get|pick up|read me|scratch|go to)[^.!?]{0,40}?(?:gift ?cards?|itunes|google play|steam card|vanilla (?:visa|card))/,
+      // "Google Play" or "iTunes" alone is an app store, not a payment ("Get it on Google Play"). Require "card".
+      /(?:pay|send|buy|purchase|get|pick up|read me|scratch|go to)[^.!?]{0,40}?(?:gift ?cards?|(?:itunes|google play|steam|razer gold) (?:gift )?cards?|(?:apple|amazon|target|walmart|ebay) gift ?cards?|vanilla (?:visa|card))/,
       /gift ?cards?[^.!?]{0,40}?(?:pay|payment|send|codes?|numbers? on the back|photo|picture)/,
     ],
   },
