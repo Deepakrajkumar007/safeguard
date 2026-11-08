@@ -9,10 +9,9 @@ type IconName = keyof typeof Ionicons.glyphMap;
 
 const QUICK: { label: string; icon: IconName; color: string; href: Href }[] = [
   { label: "Check text", icon: "chatbubble-ellipses", color: colors.blue, href: "/check" },
-  { label: "Screenshot", icon: "image", color: "#7C4DFF", href: "/soon?title=Read a screenshot" },
   { label: "Open a site", icon: "globe", color: "#0B9E6F", href: "/open" },
-  { label: "Call guard", icon: "call", color: "#E0457B", href: "/soon?title=Call guard" },
   { label: "Gmail", icon: "mail", color: "#E26B00", href: "/gmail" },
+  { label: "Text alerts", icon: "notifications", color: "#7C4DFF", href: "/alerts" },
 ];
 
 const FEATURES: { title: string; body: string; icon: IconName; bg: string; href: Href }[] = [
@@ -22,13 +21,6 @@ const FEATURES: { title: string; body: string; icon: IconName; bg: string; href:
     icon: "globe-outline",
     bg: colors.blueSoft,
     href: "/open",
-  },
-  {
-    title: "Call guard",
-    body: "Put a call on speaker. We listen for scam tricks.",
-    icon: "call-outline",
-    bg: colors.lilac,
-    href: "/soon?title=Call guard",
   },
   {
     title: "Scan my Gmail",
@@ -42,7 +34,7 @@ const FEATURES: { title: string; body: string; icon: IconName; bg: string; href:
     body: "Get a warning when a scam text arrives.",
     icon: "notifications-outline",
     bg: colors.sky,
-    href: "/soon?title=Text message alerts",
+    href: "/alerts",
   },
 ];
 
@@ -117,14 +109,14 @@ export default function Home() {
             {(
               [
                 ["clipboard-outline", "Paste"],
-                ["image-outline", "Photo"],
+                ["albums-outline", "Examples"],
                 ["create-outline", "Type"],
               ] as [IconName, string][]
             ).map(([icon, label]) => (
               <Pressable
                 key={label}
                 accessibilityRole="button"
-                onPress={() => router.push(label === "Photo" ? "/soon?title=Read a screenshot" : "/check")}
+                onPress={() => router.push("/check")}
                 style={styles.chip}
               >
                 <Ionicons name={icon} size={22} color={colors.white} />
