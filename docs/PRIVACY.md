@@ -21,14 +21,8 @@ SafeGuard is a hackathon project. This note describes what the code does with yo
 | Text alerts (Shortcuts action) | The **text** of each new message that matches your automation (e.g. contains `http`). The sender is **not** sent | SafeGuard server (rule-based checker); links go to Google Safe Browsing | No. Risky texts and their sender are kept **on the iPhone** in Recent warnings |
 | Check a message (app) | The text you paste | SafeGuard server (rule-based checker); links go to Google Safe Browsing | No |
 | Never-scan list (Gmail) | Kept in the iPhone **keychain**, sent with each scan so those senders are skipped | SafeGuard server, Gmail search | No |
-| Web app: check a message | The message | SafeGuard server (Vercel), Google Safe Browsing for links | No |
-| Web app: explain / screenshot | The message or screenshot and the checker's evidence | SafeGuard server, then **Google Gemini** | No |
-| Web app: open a site | Your voice goes through the **browser's speech service** (in Chrome, Google's servers) | Your browser vendor | No |
 
 Notes:
-- **Gemini free tier:** Google's pricing page says free-tier content is used to improve Google's products; paid-tier
-  content is not. For real users, use a paid Gemini key. SafeGuard asks Google not to store the interaction
-  (`store: false`), but Google's own terms still apply.
 - **Hosting (Vercel):** like any web host, Vercel's platform records request metadata such as time, path, and IP
   address. SafeGuard's code does not log request bodies; errors log only a status code and a short error summary.
 - **App install:** the iPhone app is installed directly from Xcode. Expo Go is only used during development.
@@ -73,7 +67,7 @@ to recording a call**, so such a feature would need to tell users to get consent
 ## Third-party terms
 
 - Google Safe Browsing Lookup API: free for non-commercial use. Commercial products should use Google Web Risk.
-- Google Gemini API, Gmail API: subject to Google's terms and policies.
+- Gmail API: subject to Google's terms and policies.
 - Brand names appear only to recognize their real websites. SafeGuard isn't affiliated with them.
 
 ## Reporting scams (US)

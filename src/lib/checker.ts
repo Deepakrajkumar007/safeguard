@@ -112,7 +112,7 @@ function nextStepsFor(level: Level, type: ScamType | null, links: LinkReport[], 
       const brand = links.flatMap((l) => l.evidence).find((e) => e.id.startsWith("link.brand"));
       steps.push(
         brand
-          ? "If you need the real company, type its address yourself or use SafeGuard's \"Open a site\" button."
+          ? "If you need the real company, type its address yourself or use SafeGuard's \"Open a website\" button."
           : "If you need to reach the company, type its address yourself instead of using this link.",
       );
       break;

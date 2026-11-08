@@ -51,7 +51,7 @@ USPS: Your package could not be delivered. Update now: https://usps.com-redelive
       Message and Sender filled in). Tested once with a text from the teammate's phone.
 - [ ] **Clear** old cards in Recent warnings so the new one stands out.
 - [ ] **Sign in to Gmail in the app within the hour before the demo** (access lasts about 1 hour). Run one scan.
-- [ ] Live server up: open <https://linkguard-khaki.vercel.app> on the laptop.
+- [ ] Live server up: <https://linkguard-khaki.vercel.app> shows the one-line SafeGuard page.
 - [ ] QuickTime mirroring works on the projector.
 - [ ] Backup video file open in a second window.
 
@@ -60,7 +60,7 @@ USPS: Your package could not be delivered. Update now: https://usps.com-redelive
 | If this fails | Do this instead |
 |---|---|
 | The text alert doesn't fire | Text alerts → **Send a test warning** (notification + Recent warnings card), or paste the scam text into **Check a message** on Home. |
-| The phone app won't open | Use the **web app** on the laptop: Check a message (example chips, **Upload a screenshot instead** with `demo/fake-usps-text.png`) and **Open a site** (Chrome microphone, `/?tab=open&site=chase`). |
+| The phone app won't open | Play the backup video, and walk through the screens in it. |
 | No internet | Open a website safely still finds the verified address (the list is on the phone). Skip Gmail and alerts; say they need a connection. |
 | Gmail asks to sign in again | Sign in (about 15 seconds), or skip to the close. |
 | Everything is down | Play the backup video (record it before the deadline with the iPhone's Screen Recording). |
@@ -68,7 +68,7 @@ USPS: Your package could not be delivered. Update now: https://usps.com-redelive
 ## Likely judge questions
 
 - **"How accurate is it?"** "We haven't benchmarked it on a big dataset yet; that's on the roadmap. We test 37 real
-  bank and government login links for zero false alarms, plus scam samples and look-alikes: 208 automated tests."
+  bank and government login links for zero false alarms, plus scam samples and look-alikes: 190 automated tests."
 - **"Can it read iMessages?"** "No app can. Apple blocks it. The user adds one Shortcut that hands new texts with links
   to SafeGuard's own action. That's the honest way to do it."
 - **"What leaves the phone?"** "For texts, only the message text goes to our rule-based checker, and the server

@@ -30,10 +30,6 @@ tools show a red or green light without explaining why.
 | **Dashboard** | Emails checked, risky emails, risky texts, and when Gmail was last scanned. |
 | **Accessibility** | Native iPhone layout, a **Larger text** switch on top of iOS text size, a **Dark mode** switch (starts out matching the iPhone), big buttons, short plain sentences. |
 
-**Web app (backup demo).** The same server also hosts a web app with a paste-a-message checker, a plain-English
-explanation from Google Gemini (the AI never decides the score), screenshot reading, Google Safe Browsing, and the
-voice launcher. It's at the deployed URL and in `src/components/`.
-
 ## How it decides
 
 1. **Rules decide.** A deterministic checker (TypeScript, in `src/lib`, shared by the server and the phone) scores a
@@ -46,8 +42,8 @@ voice launcher. It's at the deployed URL and in `src/components/`.
 3. **Emails get extra care against false alarms:** each link rule counts once, brand claims are checked only in the
    sender's name, marketing words alone ("today only") can't make an email risky, and brands' real mail domains
    (like `facebookmail.com`) are recognized.
-4. **AI only explains (web app).** Gemini gets the checker's evidence plus the message, fenced as untrusted data, and
-   writes a plain-English explanation. It can't change the score, and any "it's safe" wording is rewritten.
+4. **No AI decides anything.** Every verdict comes from the rules above, so the same message always gets the same
+   answer, and the reasons shown are the actual reasons.
 
 ## Architecture
 
@@ -71,27 +67,24 @@ flowchart LR
     GM[/api/gmail/*/]
     SH[/api/shortcut/]
     C[Shared checker]
-    W[Web app + /api/check, /api/explain,<br/>/api/screenshot, /api/reputation]
   end
   G --> GM
   GM -->|last 24h, minus never-scan senders| GML[(Gmail API, read-only)]
   SH --> C
   GM --> C
   C --> SB[(Google Safe Browsing)]
-  W --> GEM[(Google Gemini)]
 ```
 
 **Stack:** Expo SDK 58 + Expo Router + React Native 0.88 (iPhone app), `expo-app-intents` with a Swift App Intent
-and inline Swift module (Shortcuts action, Recent warnings), Next.js 16 + React 19 + Tailwind 4 (server and web),
-`tldts` (public-suffix-aware domain parsing), `@google/genai`, Vitest. Hosted on Vercel.
+and inline Swift module (Shortcuts action, Recent warnings), Next.js 16 route handlers (server),
+`tldts` (public-suffix-aware domain parsing), Vitest. Hosted on Vercel.
 
 ```
 mobile/src/app/       iPhone screens: Home (dashboard + Check a message), Scan my Gmail, Open a website, Text alerts
 mobile/src/           theme (light/dark design tokens), shared components, Gmail, warnings, keyboard handling
 mobile/app-intents/   Swift: the "Check Message with SafeGuard" Shortcuts action and the Recent warnings store
 src/lib/              shared logic: checker, brands, launcher, Gmail rules, never-scan list, reputation
-src/app/api/          server routes: gmail/{start,callback,scan,signout}, shortcut, check, explain, screenshot, reputation
-src/components/       web app UI (backup demo)
+src/app/api/          server routes: gmail/{start,callback,scan,signout} and shortcut (the text check)
 docs/                 privacy, Gmail setup, text alerts, demo script
 ```
 
@@ -105,8 +98,8 @@ git clone https://github.com/Deepakrajkumar007/safeguard.git
 cd safeguard
 npm install
 cp .env.example .env.local   # then fill in the keys (see below)
-npm run dev                  # server + web app at http://localhost:3000
-npm test                     # 208 tests
+npm run dev                  # server at http://localhost:3000 (the app talks to /api)
+npm test                     # 190 tests
 npm run check -- "USPS: package on hold, pay at https://usps.com-redelivery.info"
 ```
 
@@ -132,7 +125,6 @@ Set your own `ios.bundleIdentifier` and `ios.appleTeamId` in `mobile/app.json`. 
 | `LINKGUARD_APP_KEY` | App and Shortcuts action requests (`x-linkguard-key` header) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET` | Scan my Gmail ([setup](docs/GMAIL-SETUP.md)) |
 | `GOOGLE_SAFE_BROWSING_KEY` | Safe Browsing reputation check |
-| `GEMINI_API_KEY` (+ optional `GEMINI_MODEL`) | Web app explanation and screenshot reading |
 
 Every feature degrades gracefully: without keys, the rule-based checker still works.
 
@@ -140,7 +132,7 @@ Every feature degrades gracefully: without keys, the rule-based checker still wo
 
 ## Testing
 
-**208 automated tests** (`npm test`), including:
+**190 automated tests** (`npm test`), including:
 - 37 real brand login links (Chase, Amazon, Microsoft, PayPal, Google, Apple, banks, USPS, IRS, SSA, Medicare) that
   must score **zero**, because a false alarm in front of a real person is worse than a miss
 - real sites that resemble brands (`citizensbank.com`, `applebees.com`, `medicaid.gov`) that must not be flagged
@@ -149,7 +141,7 @@ Every feature degrades gracefully: without keys, the rule-based checker still wo
 - the voice launcher: names, dictation punctuation, look-alike addresses refused, every launch URL on its own domain
 - Gmail: query-injection-proof never-scan list, spelling checks (`gmail.con`), sender matching that ignores display
   names, verified senders, real Facebook mail vs. fake Facebook senders, calm marketing emails
-- OAuth tokens, rate limits, prompt-injection fencing, and the "never says safe" filter
+- OAuth tokens (PKCE, sealed sessions, safe return links) and rate limits
 
 The iPhone flow was tested on a real iPhone 15 Pro: the Shortcuts action checks the text, posts SafeGuard's
 notification, and adds it to Recent warnings.
@@ -176,7 +168,6 @@ Safe Browsing. Full details, including what each third party receives: **[docs/P
 - **Builds:** a free Apple ID can install the app on your own iPhone for 7 days. TestFlight and the App Store need
   the Apple Developer Program.
 - **Safe Browsing** Lookup API is for non-commercial use; a commercial product would use Google Web Risk.
-  **Gemini free tier** content may be used by Google to improve its products.
 - **Server protection** (app key + per-instance rate limits) slows abuse but isn't strong authentication.
 
 ## Roadmap

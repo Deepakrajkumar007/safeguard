@@ -9,7 +9,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "SafeGuard",
-  description: "Check a suspicious text, link, or call. SafeGuard explains the warning signs in plain English.",
+  description: "The server behind the SafeGuard iPhone app.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
