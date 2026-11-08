@@ -1,38 +1,95 @@
 // LinkGuard design tokens: the single source of truth for color, spacing, type, radius, and shadow.
 // Look: soft lavender background, white cards with gentle shadows, a blue-to-violet brand gradient
 // (inspired by a smart-home dashboard). Risk keeps its own green / amber / red so "danger" never looks
-// like the brand. The app is light-only (app.json).
-import type { TextStyle } from "react-native";
+// like the brand.
+//
+// Dark mode: every surface/text/risk color is an iOS dynamic color (DynamicColorIOS), so iOS swaps it
+// automatically when the app is light or dark (following the iPhone, or the in-app Appearance choice).
+// Components that need a plain string (e.g. SVG strokes, navigation headers) read `palettes[scheme]`.
+import { DynamicColorIOS, type NativeColorValue, type TextStyle } from "react-native";
 
-export const colors = {
-  // Surfaces
+const light = {
   bg: "#F4F5FB",
   card: "#FFFFFF",
   separator: "#E6E8F2",
   pressed: "#EEF0F8", // row highlight while pressed
-  // Text
   ink: "#1B1E3C", // primary label
   muted: "#6B7090", // secondary label (meets contrast on white and bg)
   placeholder: "#9AA0B8",
   chevron: "#B3B8CC",
-  white: "#FFFFFF",
-  // Brand
   blue: "#4F6BFF", // actions, links, switches
   violet: "#7B5CFF",
   blueSoft: "#ECEFFF",
   violetSoft: "#F0ECFF",
+  verifiedOutline: "#9BE3C3",
+  noneFg: "#0B7A55",
+  noneBg: "#DDF6EA",
+  lowFg: "#3A50D9",
+  lowBg: "#ECEFFF",
+  cautionFg: "#9A4A00",
+  cautionBg: "#FFEFD6",
+  highFg: "#C21640",
+  highBg: "#FFE3E8",
+};
+
+const dark: typeof light = {
+  bg: "#0E1020",
+  card: "#1A1D31",
+  separator: "#2B2F47",
+  pressed: "#24283E",
+  ink: "#EEF0FA",
+  muted: "#A6ABC6", // meets contrast on card and bg
+  placeholder: "#6F7492",
+  chevron: "#5B6080",
+  blue: "#8095FF", // lighter so links and switches read on dark
+  violet: "#A28CFF",
+  blueSoft: "#232A4F",
+  violetSoft: "#2B2552",
+  verifiedOutline: "#2F7A5A",
+  noneFg: "#5BE0AE",
+  noneBg: "#103529",
+  lowFg: "#A3B0FF",
+  lowBg: "#1F2549",
+  cautionFg: "#FFB869",
+  cautionBg: "#3B2A12",
+  highFg: "#FF8AA3",
+  highBg: "#3F1623",
+};
+
+/** Plain-string palettes, for the few places that can't take a dynamic color. */
+export const palettes = { light, dark } as const;
+
+const dyn = (key: keyof typeof light) => DynamicColorIOS({ light: light[key], dark: dark[key] }) as NativeColorValue;
+
+export const colors = {
+  // Surfaces
+  bg: dyn("bg"),
+  card: dyn("card"),
+  separator: dyn("separator"),
+  pressed: dyn("pressed"),
+  // Text
+  ink: dyn("ink"),
+  muted: dyn("muted"),
+  placeholder: dyn("placeholder"),
+  chevron: dyn("chevron"),
+  white: "#FFFFFF", // text and icons on the brand gradient (same in light and dark)
+  // Brand
+  blue: dyn("blue"),
+  violet: dyn("violet"),
+  blueSoft: dyn("blueSoft"),
+  violetSoft: dyn("violetSoft"),
   gradient: ["#5B7CFF", "#7B5CFF"] as const, // brand gradient (header, primary button, selected tile)
   onGradientMuted: "rgba(255,255,255,0.82)",
-  verifiedOutline: "#9BE3C3",
+  verifiedOutline: dyn("verifiedOutline"),
   ringHigh: ["#FF7A9A", "#C21640"] as const, // dial gradient when risky emails were found
   ringNone: ["#4CD7A4", "#0B7A55"] as const, // dial gradient when none were found
-  // Feature tiles
+  // Feature tiles (vivid icon backgrounds; work on light and dark)
   tile: { gmail: "#FF7A45", web: "#19B07B", texts: "#7B5CFF", settings: "#6B7090" },
   risk: {
-    none: { fg: "#0B7A55", bg: "#DDF6EA", label: "No red flags" },
-    low: { fg: "#3A50D9", bg: "#ECEFFF", label: "Small signs" },
-    caution: { fg: "#9A4A00", bg: "#FFEFD6", label: "Be careful" },
-    high: { fg: "#C21640", bg: "#FFE3E8", label: "High risk" },
+    none: { fg: dyn("noneFg"), bg: dyn("noneBg"), label: "No red flags" },
+    low: { fg: dyn("lowFg"), bg: dyn("lowBg"), label: "Small signs" },
+    caution: { fg: dyn("cautionFg"), bg: dyn("cautionBg"), label: "Be careful" },
+    high: { fg: dyn("highFg"), bg: dyn("highBg"), label: "High risk" },
   },
 } as const;
 

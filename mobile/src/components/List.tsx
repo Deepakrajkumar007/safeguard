@@ -18,7 +18,7 @@ export function Section({ title, footer, children }: { title?: string; footer?: 
       )}
       <View style={styles.group}>
         {rows.map((row, i) => (
-          <Fragment key={i}>
+          <Fragment key={row.key ?? i}>
             {i > 0 && <View style={styles.separator} />}
             {row}
           </Fragment>

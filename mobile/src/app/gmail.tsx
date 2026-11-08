@@ -7,6 +7,7 @@ import { Card, Chip, Ring } from "@/components/Dashboard";
 import { Row, Section } from "@/components/List";
 import {
   cleanSkipEntry,
+  endingTypoHint,
   getSession,
   loadSkipList,
   notifyFlagged,
@@ -16,21 +17,25 @@ import {
   signOut,
   type EmailVerdict,
   type ScanResult,
+  withoutSkipped,
 } from "@/gmail";
 import { T, useSettings } from "@/settings";
-import { speak } from "@/speech";
 import { loadLastScan, saveLastScan, timeAgo, type LastScan } from "@/stats-store";
+import { useKeyboardScroll } from "@/use-keyboard-scroll";
 import { colors, radius, spacing, type } from "@/theme";
 
 export default function GmailScreen() {
-  const { scale, autoRead } = useSettings();
+  const { scale } = useSettings();
   const [signedIn, setSignedIn] = useState(false);
   const [busy, setBusy] = useState<null | "signin" | "scan">(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const { scrollRef, inputRef, onScroll } = useKeyboardScroll();
   const [skip, setSkip] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [draftError, setDraftError] = useState<string | null>(null);
+  // The saved sender being fixed in the box. It stays saved until Save is tapped, so leaving loses nothing.
+  const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [last, setLast] = useState<LastScan | null>(null);
 
@@ -53,21 +58,14 @@ export default function GmailScreen() {
         if (r.expired) setSignedIn(false);
         return;
       }
-      setResult(r.data);
-      const summary = { scanned: r.data.scanned, flagged: r.data.flagged.length, verified: r.data.verifiedCount, at: Date.now() };
+      const data = { ...r.data, flagged: withoutSkipped(r.data.flagged, list) };
+      setResult(data);
+      const summary = { scanned: data.scanned, flagged: data.flagged.length, verified: r.data.verifiedCount, at: Date.now() };
       setLast(summary);
       void saveLastScan(summary);
-      await notifyFlagged(r.data.flagged.length);
-      if (autoRead) {
-        const n = r.data.flagged.length;
-        void speak(
-          n === 0
-            ? `No red flags found in ${r.data.scanned} emails from the last 24 hours.`
-            : `Warning. ${n} risky ${n === 1 ? "email" : "emails"} found in the last 24 hours. Don't click links in ${n === 1 ? "it" : "them"}.`,
-        );
-      }
+      await notifyFlagged(data.flagged.length);
     },
-    [autoRead],
+    [],
   );
 
   const onSignIn = async () => {
@@ -86,17 +84,34 @@ export default function GmailScreen() {
   const addSkip = async () => {
     const entry = cleanSkipEntry(draft);
     if (!entry) {
-      setDraftError("Enter an email (boss@work.com) or a whole company (@work.com).");
+      const hint = endingTypoHint(draft);
+      setDraftError(
+        hint
+          ? `Check the spelling: did you mean ${hint} at the end?`
+          : "Enter an email (boss@work.com) or a whole company (@work.com), spelled exactly.",
+      );
       return;
     }
-    const next = [...new Set([...skip, entry])].slice(0, 25);
+    const next = [...new Set([...skip.filter((s) => s !== editing), entry])].slice(0, 25);
     setSkip(next);
+    setEditing(null);
+    // Hide that sender's emails from the results on screen right away (no rescan needed).
+    setResult((r) => (r ? { ...r, flagged: withoutSkipped(r.flagged, next) } : r));
     setDraft("");
     setDraftError(null);
     await saveSkipList(next);
   };
 
+  // Tap a saved sender to fix it: a copy goes into the box. The original is replaced only when you tap Save.
+  const editSkip = (entry: string) => {
+    setEditing(entry);
+    setDraft(entry);
+    setDraftError(null);
+    inputRef.current?.focus();
+  };
+
   const removeSkip = async (entry: string) => {
+    if (editing === entry) setEditing(null);
     const next = skip.filter((s) => s !== entry);
     setSkip(next);
     await saveSkipList(next);
@@ -104,11 +119,15 @@ export default function GmailScreen() {
 
   return (
     <ScrollView
+      ref={scrollRef}
+      automaticallyAdjustKeyboardInsets
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg }}
     >
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       <Card>
         <View style={{ gap: spacing.md, paddingVertical: spacing.sm }}>
           {(() => {
@@ -214,6 +233,16 @@ export default function GmailScreen() {
           <Row
             key={s}
             title={s}
+            // Older entries were saved before spelling checks: point out any that can never match.
+            subtitle={
+              editing === s
+                ? "Editing below. Tap Save when done."
+                : cleanSkipEntry(s)
+                  ? "Tap to edit"
+                  : `Check the spelling${endingTypoHint(s) ? ` (${endingTypoHint(s)}?)` : ""}. Tap to fix it.`
+            }
+            onPress={() => editSkip(s)}
+            accessibilityLabel={`${s}. Tap to edit.`}
             right={
               <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${s}`} hitSlop={10} onPress={() => removeSkip(s)}>
                 <Ionicons name="remove-circle" size={24} color={colors.risk.high.fg} />
@@ -223,6 +252,7 @@ export default function GmailScreen() {
         ))}
         <View style={styles.addRow}>
           <TextInput
+            ref={inputRef}
             value={draft}
             onChangeText={(v) => {
               setDraft(v);
@@ -240,7 +270,7 @@ export default function GmailScreen() {
           />
           <Pressable accessibilityRole="button" onPress={addSkip} hitSlop={8}>
             <T variant="headline" color={colors.blue}>
-              Add
+              {editing ? "Save" : "Add"}
             </T>
           </Pressable>
         </View>

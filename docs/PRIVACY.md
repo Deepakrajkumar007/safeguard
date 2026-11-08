@@ -4,8 +4,9 @@ LinkGuard is a hackathon project. This note describes what the code does with yo
 
 ## The short version
 
-- **Messages and emails are not stored** by LinkGuard, and the server doesn't log their contents.
-- **Texts from trusted senders are ignored.** LinkGuard drops them before checking anything.
+- **The server stores no messages or emails** and doesn't log their contents.
+- **Risky texts stay on your iPhone.** Texts LinkGuard warns you about are kept only on the phone, in Recent
+  warnings (last 20, one tap to clear). The text alert sends the server only the message text, never the sender.
 - **Gmail scanning uses no AI**, reads only the last 24 hours, skips senders you choose, and sends the phone only
   summaries (never email bodies).
 - Some features send data to other companies, always for that one feature, as listed below.
@@ -17,9 +18,9 @@ LinkGuard is a hackathon project. This note describes what the code does with yo
 |---|---|---|---|
 | Scan my Gmail (app) | Email from the **last 24 hours**, minus your never-scan senders, is read by the LinkGuard server | LinkGuard server (Google sends it); links may be checked with Google Safe Browsing | No |
 | Open a website safely (app) | Your spoken words go through the **iPhone keyboard's dictation** (Apple's speech service). The brand match happens on the phone | Apple, per iOS settings | No |
-| Text alerts (Shortcuts) | Each new text that matches your automation (e.g. contains `http`), plus its **sender** and your **trusted list** | LinkGuard server; if the sender isn't trusted, the rule-based checker runs and links go to Google Safe Browsing | No |
-| Trusted senders list | Kept in the iPhone **keychain**. You copy it into your Shortcut, which sends it with each text | LinkGuard server (to compare, then discarded) | No |
-| Never-scan list (Gmail) | Kept in the iPhone **keychain**, sent with each scan so Gmail excludes those senders | LinkGuard server, Gmail search | No |
+| Text alerts (Shortcuts action) | The **text** of each new message that matches your automation (e.g. contains `http`). The sender is **not** sent | LinkGuard server (rule-based checker); links go to Google Safe Browsing | No. Risky texts and their sender are kept **on the iPhone** in Recent warnings |
+| Check a message (app) | The text you paste | LinkGuard server (rule-based checker); links go to Google Safe Browsing | No |
+| Never-scan list (Gmail) | Kept in the iPhone **keychain**, sent with each scan so those senders are skipped | LinkGuard server, Gmail search | No |
 | Web app: check a message | The message | LinkGuard server (Vercel), Google Safe Browsing for links | No |
 | Web app: explain / screenshot | The message or screenshot and the checker's evidence | LinkGuard server, then **Google Gemini** | No |
 | Web app: open a site | Your voice goes through the **browser's speech service** (in Chrome, Google's servers) | Your browser vendor | No |
@@ -30,7 +31,7 @@ Notes:
   (`store: false`), but Google's own terms still apply.
 - **Hosting (Vercel):** like any web host, Vercel's platform records request metadata such as time, path, and IP
   address. LinkGuard's code does not log request bodies; errors log only a status code and a short error summary.
-- **Expo Go:** during development the app runs inside Expo's Expo Go app.
+- **App install:** the iPhone app is installed directly from Xcode. Expo Go is only used during development.
 
 ## Gmail
 
@@ -38,7 +39,8 @@ Notes:
   permission that can read message content; it technically allows reading all mail.
 - **LinkGuard's own limits** (enforced on the server, see `src/lib/gmail.ts`):
   - only `newer_than:1d` (last 24 hours), at most 30 emails per scan
-  - senders on your never-scan list are excluded inside the Gmail search, so they are never downloaded
+  - senders on your never-scan list are excluded inside the Gmail search; as a safety net, the server then reads
+    only each email's **From** line and drops never-scan senders before the email itself is downloaded
   - rule-based checker only; **no email content is sent to an AI**
   - the phone receives sender, subject, score, and reasons only, never email bodies
 - **No long-term access:** sign-in requests no refresh token. The access token lasts about an hour, is sealed
@@ -54,10 +56,13 @@ Apple doesn't let apps read Messages. Text alerts work only through a Shortcuts 
 can delete it at any time (Shortcuts, Automation, swipe left). LinkGuard can't read old messages, block messages, or
 see texts the automation doesn't send.
 
-**Trusted senders.** In the current version, the Shortcut sends each matching text with its sender and your trusted
-list. If the sender is trusted, the server returns immediately: the text is not checked, logged, or stored. It does
-still travel to the server. The planned native Shortcuts action will compare the sender **on the phone**, so trusted
-senders' texts never leave it.
+**What the action does.** LinkGuard's "Check Message with LinkGuard" action runs inside the LinkGuard app on your
+iPhone. It sends only the message text to the server's rule-based checker. The sender never leaves the phone.
+
+**Recent warnings.** When a text gets a warning, the app keeps that text, its sender, the verdict, and the time in
+its private storage on the iPhone, so you can see what was flagged even if you missed the notification. Texts with
+no warning signs are not kept. The list holds the last 20 and **Clear** deletes them. It's protected by the phone's
+own lock (it isn't in the keychain).
 
 ## Phone calls (future feature)
 

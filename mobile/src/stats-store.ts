@@ -32,8 +32,8 @@ export async function saveLastScan(s: LastScan): Promise<void> {
   }
 }
 
-export function timeAgo(at: number): string {
-  const mins = Math.round((Date.now() - at) / 60000);
+export function timeAgo(at: number, now: number = Date.now()): string {
+  const mins = Math.round((now - at) / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins} min ago`;
   const hrs = Math.round(mins / 60);

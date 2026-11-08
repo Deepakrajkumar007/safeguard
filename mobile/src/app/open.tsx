@@ -5,11 +5,10 @@ import { StatusBar } from "expo-status-bar";
 import { useMemo, useRef, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View, type TextInputInstance } from "react-native";
 import type { Brand } from "@shared/brands";
-import { matchSpoken, POPULAR, spokenAddress } from "@shared/launcher";
+import { matchSpoken, POPULAR } from "@shared/launcher";
 import { Button, Notice } from "@/components/Button";
 import { InitialBadge } from "@/components/List";
 import { T, useSettings } from "@/settings";
-import { speak } from "@/speech";
 import { colors, radius, shadows, spacing, type } from "@/theme";
 
 /**
@@ -17,7 +16,7 @@ import { colors, radius, shadows, spacing, type } from "@/theme";
  * verified list and open exactly that. Speech is never turned into a web address.
  */
 export default function OpenSite() {
-  const { scale, autoRead } = useSettings();
+  const { scale } = useSettings();
   // Optional prefill for demos: /open?q=chase
   const { q } = useLocalSearchParams<{ q?: string }>();
   const [said, setSaid] = useState(typeof q === "string" ? q : "");
@@ -30,7 +29,6 @@ export default function OpenSite() {
 
   const choose = (b: Brand) => {
     setPicked(b);
-    if (autoRead) void speak(`${b.name}. The real website is ${spokenAddress(b.launchUrl)}.`);
   };
 
   return (
@@ -39,7 +37,7 @@ export default function OpenSite() {
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg }}
     >
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
       {/* Big mic button: opens the keyboard so you can tap its microphone and say a name. */}
       <View style={{ alignItems: "center", gap: spacing.smd, paddingTop: spacing.sm }}>
         <Pressable

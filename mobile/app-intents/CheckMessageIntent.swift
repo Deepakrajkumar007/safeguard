@@ -1,17 +1,25 @@
 import AppIntents
 import Foundation
+import OSLog
 import UserNotifications
 internal import ExpoAppIntents
 
 /// "Check Message with LinkGuard": a Shortcuts action for the "When I get a message" automation.
 ///
-/// 1. Trusted senders are compared ON THIS IPHONE first. Their texts stop here and are never sent anywhere.
-/// 2. Other texts go to LinkGuard's rule-based checker (no AI). Only the message text is sent.
-/// 3. A risky result is shown as a local notification. Nothing is stored.
+/// 1. The text goes to LinkGuard's rule-based checker (no AI). Only the message text is sent.
+/// 2. The sender stays on this iPhone; it's only shown in Recent warnings so you know who texted.
+/// 3. A risky result is shown as a LinkGuard notification and added to the app's "Recent warnings"
+///    (the risky text and its sender, kept only on this iPhone). Tapping the notification opens Text Alerts.
+/// 4. If LinkGuard can't show its notification, the warning is handed to Shortcuts to show instead.
+///
+/// Diagnostics: `log stream`/Console lines tagged "LGTRACE" record each step. They contain the verdict
+/// level only, never the message, the sender, or the links.
+private let trace = Logger(subsystem: "com.deepakrajkumar.linkguard", category: "TextCheck")
+
 struct CheckMessageIntent: AppIntent {
   static let title: LocalizedStringResource = "Check Message with LinkGuard"
   static let description = IntentDescription(
-    "Checks a text message for scam warning signs and warns you if it looks risky. Texts from your trusted senders are ignored on this iPhone."
+    "Checks a text message for scam warning signs and warns you if it looks risky."
   )
   static let openAppWhenRun: Bool = false
 
@@ -26,52 +34,36 @@ struct CheckMessageIntent: AppIntent {
   }
 
   func perform() async throws -> some IntentResult & ReturnsValue<String> {
-    if let sender, !sender.isEmpty {
-      let records = (try? await AppIntentEntityStore.shared.entities(ofKind: TrustedSenders.catalogKind)) ?? []
-      if TrustedSenders.isTrusted(sender, ids: records.map { $0.id }) {
-        return .result(value: "") // Trusted: stop here. Nothing leaves the phone.
-      }
-    }
+    trace.notice("LGTRACE start hasSender=\(!(sender ?? "").isEmpty, privacy: .public)")
     guard let verdict = await LinkGuardServer.check(message) else {
+      trace.error("LGTRACE server check failed")
       return .result(value: "")
     }
-    if verdict.show {
-      await LinkGuardNotifier.show(title: verdict.title, body: verdict.body)
-      return .result(value: verdict.notification)
+    trace.notice("LGTRACE verdict level=\(verdict.level, privacy: .public) show=\(verdict.show, privacy: .public)")
+    guard verdict.show else { return .result(value: "") }
+
+    let notified = await LinkGuardNotifier.show(title: verdict.title, body: verdict.body)
+    WarningLog.add(
+      level: verdict.level, title: verdict.title, body: verdict.body,
+      message: message, sender: sender ?? "", notified: notified
+    )
+    if !notified {
+      // Never silent: Shortcuts shows a thrown error's message as its own notification.
+      throw LinkGuardWarning(message: verdict.notification)
     }
-    return .result(value: "")
+    return .result(value: verdict.notification)
   }
 }
 
-/// Mirrors parseTrusted() in src/lib/trusted.ts so the phone and the server agree on what matches.
-/// Catalog ids are "kind:value", e.g. "phone:+17165550123", "email:mom@icloud.com", "name:grandma linda".
-enum TrustedSenders {
-  static let catalogKind = "trustedSender"
-
-  static func key(for raw: String) -> String? {
-    let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !s.isEmpty, s.count <= 120 else { return nil }
-    if s.range(of: #"^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"#, options: .regularExpression) != nil {
-      return "email:" + s.lowercased()
-    }
-    if s.range(of: #"^[+(0-9][0-9\s().-]*$"#, options: .regularExpression) != nil {
-      let digits = String(s.unicodeScalars.filter { CharacterSet.decimalDigits.contains($0) && $0.isASCII })
-      guard (7...15).contains(digits.count) else { return nil }
-      if !s.hasPrefix("+") && digits.count == 10 { return "phone:+1" + digits }
-      return "phone:+" + digits
-    }
-    let name = s.lowercased().split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
-    return name.isEmpty ? nil : "name:" + name
-  }
-
-  static func isTrusted(_ sender: String, ids: [String]) -> Bool {
-    guard let k = key(for: sender) else { return false }
-    return ids.contains(k)
-  }
+/// Used only when LinkGuard's own notification couldn't be shown, so Shortcuts displays the warning.
+struct LinkGuardWarning: Error, CustomLocalizedStringResourceConvertible {
+  let message: String
+  var localizedStringResource: LocalizedStringResource { "\(message)" }
 }
 
 struct LinkGuardVerdict {
   let show: Bool
+  let level: String
   let title: String
   let body: String
   let notification: String
@@ -92,7 +84,8 @@ enum LinkGuardServer {
     if let key = Bundle.main.object(forInfoDictionaryKey: "LinkGuardAppKey") as? String, !key.isEmpty {
       request.setValue(key, forHTTPHeaderField: "x-linkguard-key")
     }
-    request.httpBody = try? JSONSerialization.data(withJSONObject: ["text": String(text.prefix(5000))])
+    // "source" only tells the server log this came from the Shortcuts action (not the in-app tester).
+    request.httpBody = try? JSONSerialization.data(withJSONObject: ["text": String(text.prefix(5000)), "source": "action"])
 
     do {
       let (data, response) = try await URLSession.shared.data(for: request)
@@ -101,6 +94,7 @@ enum LinkGuardServer {
       else { return nil }
       return LinkGuardVerdict(
         show: (json["show"] as? String) == "yes",
+        level: json["level"] as? String ?? "none",
         title: json["title"] as? String ?? "LinkGuard",
         body: json["body"] as? String ?? "",
         notification: json["notification"] as? String ?? ""
@@ -112,15 +106,27 @@ enum LinkGuardServer {
 }
 
 enum LinkGuardNotifier {
-  static func show(title: String, body: String) async {
+  /// Returns true only if iOS accepted the notification.
+  static func show(title: String, body: String) async -> Bool {
     let center = UNUserNotificationCenter.current()
     let settings = await center.notificationSettings()
-    guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+    trace.notice("LGTRACE notification auth=\(settings.authorizationStatus.rawValue, privacy: .public) alert=\(settings.alertSetting.rawValue, privacy: .public)")
+    let allowed: [UNAuthorizationStatus] = [.authorized, .provisional, .ephemeral]
+    guard allowed.contains(settings.authorizationStatus) else { return false }
     let content = UNMutableNotificationContent()
     content.title = title
     content.body = body
     content.sound = .default
+    content.threadIdentifier = "linkguard-texts"
+    content.userInfo = ["url": "/alerts"] // tapping it opens LinkGuard's Text Alerts screen
     let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-    try? await center.add(request)
+    do {
+      try await center.add(request)
+      trace.notice("LGTRACE notification added")
+      return true
+    } catch {
+      trace.error("LGTRACE notification failed: \(error.localizedDescription, privacy: .public)")
+      return false
+    }
   }
 }

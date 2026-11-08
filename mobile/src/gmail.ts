@@ -1,8 +1,11 @@
 import * as Linking from "expo-linking";
+import { endingTypoHint, isSkippedSender, normalizeSkipEntry } from "@shared/skip";
 import * as Notifications from "expo-notifications";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { apiBase, apiHeaders } from "./api";
+
+export { endingTypoHint };
 
 /**
  * Gmail on the phone. The phone never sees your Google password or a long-lived token: it keeps only a
@@ -126,12 +129,14 @@ export async function saveSkipList(list: string[]): Promise<void> {
   await SecureStore.setItemAsync(SKIP_KEY, JSON.stringify(list.slice(0, 25)));
 }
 
-/** Same rule as the server: "name@company.com", "@company.com", or "company.com". */
+/** Same rule as the server (shared code): "name@company.com", "@company.com", or "company.com". */
 export function cleanSkipEntry(raw: string): string | null {
-  const s = raw.trim().toLowerCase();
-  if (/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(s)) return s;
-  const d = s.replace(/^@/, "");
-  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) ? `@${d}` : null;
+  return normalizeSkipEntry(raw);
+}
+
+/** Drops never-scan senders from a result list (backs up the server, and applies right after you add one). */
+export function withoutSkipped(flagged: EmailVerdict[], skip: string[]): EmailVerdict[] {
+  return skip.length ? flagged.filter((v) => !isSkippedSender(v.from, skip)) : flagged;
 }
 
 // ---------- Notification ----------
@@ -145,6 +150,7 @@ export async function notifyFlagged(count: number): Promise<void> {
       content: {
         title: count === 1 ? "LinkGuard found 1 risky email" : `LinkGuard found ${count} risky emails`,
         body: "From the last 24 hours. Don't click links in them. Open LinkGuard to see why.",
+        data: { url: "/gmail" },
       },
       trigger: null,
     });

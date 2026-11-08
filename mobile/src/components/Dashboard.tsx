@@ -1,10 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, useColorScheme, View } from "react-native";
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from "react-native-svg";
 import { T } from "@/settings";
-import { colors, radius, shadows, spacing } from "@/theme";
+import { colors, palettes, radius, shadows, spacing } from "@/theme";
 import type { IconName } from "./List";
 
 /** White card with soft shadow. */
@@ -88,6 +88,7 @@ export function Ring({ progress, size = 210, stroke = 16, tone = "brand", childr
   const c = 2 * Math.PI * r;
   const p = Math.max(0, Math.min(1, progress));
   const ends = tone === "high" ? colors.ringHigh : tone === "none" ? colors.ringNone : colors.gradient;
+  const track = palettes[useColorScheme() === "dark" ? "dark" : "light"].separator; // SVG needs a plain color
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center", alignSelf: "center" }}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
@@ -97,7 +98,7 @@ export function Ring({ progress, size = 210, stroke = 16, tone = "brand", childr
             <Stop offset="1" stopColor={ends[1]} />
           </SvgGradient>
         </Defs>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.separator} strokeWidth={stroke} fill="none" />
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={track} strokeWidth={stroke} fill="none" />
         {p > 0 && (
           <Circle
             cx={size / 2}

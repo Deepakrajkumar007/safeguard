@@ -235,7 +235,7 @@ export const BRANDS: Brand[] = [
     name: "Facebook",
     aliases: ["facebook", "face book"],
     launchUrl: "https://www.facebook.com",
-    domains: ["facebook.com", "fb.com", "messenger.com", "meta.com"],
+    domains: ["facebook.com", "fb.com", "messenger.com", "meta.com", "facebookmail.com"], // facebookmail.com: Facebook's real email sender
     tokens: ["facebook"],
     textNames: ["Facebook", "Meta"],
   },

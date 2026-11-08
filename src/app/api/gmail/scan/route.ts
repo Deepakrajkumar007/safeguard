@@ -1,4 +1,4 @@
-import { buildQuery, judgeEmail, MAX_EMAILS, MAX_SKIP, normalizeSkipEntry, parseGmailMessage, type GmailMessage } from "@/lib/gmail";
+import { buildQuery, isSkippedSender, judgeEmail, MAX_EMAILS, MAX_SKIP, normalizeSkipEntry, parseGmailMessage, type GmailMessage } from "@/lib/gmail";
 import { guard } from "@/lib/guard";
 import { unseal } from "@/lib/session";
 
@@ -37,7 +37,28 @@ export async function POST(request: Request) {
 
     const list = await gmail<{ messages?: { id: string }[] }>(`/messages?maxResults=${MAX_EMAILS}&q=${encodeURIComponent(q)}`, session.at);
     if (!list.ok) return Response.json({ error: "Couldn't list your recent emails. Try again in a minute." }, { status: 502 });
-    const ids = (list.data.messages ?? []).map((m) => m.id).slice(0, MAX_EMAILS);
+    let ids = (list.data.messages ?? []).map((m) => m.id).slice(0, MAX_EMAILS);
+
+    // Safety net for the never-scan list: Gmail's -from: search doesn't always catch every sender, so read ONLY
+    // the From header of each email first and drop never-scan senders before anything else is downloaded.
+    let skippedCount = 0;
+    if (skip.length) {
+      const keep: string[] = [];
+      for (let i = 0; i < ids.length; i += 6) {
+        const batch = await Promise.all(
+          ids.slice(i, i + 6).map(async (id) => ({
+            id,
+            m: await gmail<GmailMessage>(`/messages/${encodeURIComponent(id)}?format=metadata&metadataHeaders=From`, session.at),
+          })),
+        );
+        for (const { id, m } of batch) {
+          const from = m.ok ? (m.data.payload?.headers?.find((h) => h.name.toLowerCase() === "from")?.value ?? "") : "";
+          if (from && isSkippedSender(from, skip)) skippedCount++;
+          else keep.push(id);
+        }
+      }
+      ids = keep;
+    }
 
     // Fetch a few at a time to stay quick and polite to Gmail.
     const verdicts = [];
@@ -54,6 +75,7 @@ export async function POST(request: Request) {
       window: "last 24 hours",
       scanned: verdicts.length,
       skippedSenders: skip,
+      skippedCount,
       flagged,
       verifiedCount: verdicts.filter((v) => v.verifiedSender).length,
     });

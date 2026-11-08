@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { buildQuery, dmarcPassDomain, htmlToText, judgeEmail, normalizeSkipEntry, parseGmailMessage, type GmailMessage } from "../gmail";
+import { addressFromHeader, buildQuery, dmarcPassDomain, isSkippedSender, htmlToText, judgeEmail, normalizeSkipEntry, parseGmailMessage, type GmailMessage } from "../gmail";
 import { safeReturnUrl } from "../gmail-oauth";
 import { pkceChallenge, seal, unseal } from "../session";
 
@@ -219,3 +219,65 @@ describe("email verdicts", () => {
   });
 });
 
+
+describe("never-scan safety net (isSkippedSender)", () => {
+  it("matches a whole domain from the list", () => {
+    expect(isSkippedSender("Deepak <hello@deepakrajkumar.com>", ["@deepakrajkumar.com"])).toBe(true);
+    expect(isSkippedSender("hello@deepakrajkumar.com", ["deepakrajkumar.com"])).toBe(true);
+  });
+  it("matches subdomains of a listed domain", () => {
+    expect(isSkippedSender("News <news@mail.deepakrajkumar.com>", ["deepakrajkumar.com"])).toBe(true);
+  });
+  it("matches an exact address, case-insensitively", () => {
+    expect(isSkippedSender('"Boss" <Boss@Work.com>', ["boss@work.com"])).toBe(true);
+    expect(isSkippedSender("other@work.com", ["boss@work.com"])).toBe(false);
+  });
+  it("does not match look-alike domains", () => {
+    expect(isSkippedSender("x@notdeepakrajkumar.com", ["deepakrajkumar.com"])).toBe(false);
+    expect(isSkippedSender("x@deepakrajkumar.com.evil.top", ["deepakrajkumar.com"])).toBe(false);
+  });
+  it("ignores the display name, so a scammer can't dodge the scan by naming themselves after a skipped domain", () => {
+    expect(isSkippedSender("deepakrajkumar.com <scam@evil.top>", ["deepakrajkumar.com"])).toBe(false);
+  });
+  it("extracts the address from a From header", () => {
+    expect(addressFromHeader("Deepak Rajkumar <Hi@Example.com>")).toBe("hi@example.com");
+    expect(addressFromHeader("hi@example.com")).toBe("hi@example.com");
+  });
+});
+
+describe("never-scan entries must be spelled right", () => {
+  it("rejects made-up endings like .con, with a .com hint", async () => {
+    const { endingTypoHint } = await import("../skip");
+    expect(normalizeSkipEntry("deepakrajkumar2007@gmail.con")).toBeNull();
+    expect(normalizeSkipEntry("work.cmo")).toBeNull();
+    expect(endingTypoHint("deepakrajkumar2007@gmail.con")).toBe(".com");
+    expect(endingTypoHint("boss@work.com")).toBeNull();
+  });
+  it("still accepts real addresses and domains", () => {
+    expect(normalizeSkipEntry("deepakrajkumar2007@gmail.com")).toBe("deepakrajkumar2007@gmail.com");
+    expect(normalizeSkipEntry("@work.co.uk")).toBe("@work.co.uk");
+    expect(normalizeSkipEntry("deepakrajkumar.com")).toBe("@deepakrajkumar.com");
+  });
+});
+
+describe("real Facebook notification emails", () => {
+  it("does not call facebookmail.com a fake sender", () => {
+    const v = judgeEmail(
+      parseGmailMessage(
+        message(
+          "Facebook <notification@facebookmail.com>",
+          "You have 4 notifications about Pages",
+          '<p>See what you missed.</p><a href="https://www.facebook.com/n/?notifications">View notifications</a>',
+          "mx.google.com; dkim=pass header.i=@facebookmail.com; spf=pass; dmarc=pass (p=REJECT) header.from=facebookmail.com",
+        ),
+      ),
+    );
+    expect(v.level === "none" || v.level === "low").toBe(true);
+  });
+  it("still flags a fake Facebook sender", () => {
+    const v = judgeEmail(
+      parseGmailMessage(message("Facebook Security <security@facebook-help-center.top>", "Your page will be removed", '<a href="https://facebook-help-center.top/appeal">Appeal now</a>')),
+    );
+    expect(v.level).toBe("high");
+  });
+});

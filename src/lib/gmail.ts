@@ -1,30 +1,21 @@
 import { parse } from "tldts";
 import { brandsMentioned, checkMessage, levelFor } from "./checker";
 import { analyzeLink, officialBrandFor } from "./url-analysis";
+import { addressFromHeader, isSkippedSender, MAX_SKIP, normalizeSkipEntry } from "./skip";
 import type { Evidence, Level } from "./types";
+
+export { addressFromHeader, isSkippedSender, MAX_SKIP, normalizeSkipEntry };
 
 /**
  * Gmail scanning (server-only). Privacy limits are enforced HERE, in the Gmail search itself:
  *  - only mail from the last 24 hours (newer_than:1d), at most MAX_EMAILS
- *  - senders on the person's "never scan" list are excluded by Gmail, so we never download them
+ *  - senders on the person's "never scan" list are excluded by Gmail's search, and again by us after
+ *    reading only the From header (isSkippedSender), so their emails are never downloaded or checked
  * Only the rule-based checker runs. Email bodies are never returned to the phone, logged, or stored.
  */
 
 export const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 export const MAX_EMAILS = 30;
-export const MAX_SKIP = 25;
-
-// ---------- "Never scan" list ----------
-
-/** Accepts "name@company.com", "@company.com", or "company.com". Returns a safe canonical form or null. */
-export function normalizeSkipEntry(raw: string): string | null {
-  const s = raw.trim().toLowerCase();
-  if (s.length > 120) return null;
-  if (/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(s)) return s; // full address
-  const domain = s.replace(/^@/, "");
-  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain) && parse(domain).domain) return `@${domain}`;
-  return null;
-}
 
 /** Gmail search: last 24 hours, minus never-scan senders. Entries are validated, so no query injection. */
 export function buildQuery(skip: string[]): string {
@@ -116,7 +107,7 @@ export function parseGmailMessage(msg: GmailMessage): ParsedEmail {
   const acc = { plain: [] as string[], html: [] as string[] };
   collect(msg.payload, acc);
   const fromHeader = header(msg.payload, "From");
-  const fromAddress = (/<([^>]+)>/.exec(fromHeader)?.[1] ?? fromHeader).trim().toLowerCase();
+  const fromAddress = addressFromHeader(fromHeader);
   const html = acc.html.map(htmlToText);
   const text = (acc.plain.join("\n").trim() || html.map((h) => h.text).join("\n")).slice(0, 4000);
   const links = [...new Set(html.flatMap((h) => h.hrefs))];

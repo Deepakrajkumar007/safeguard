@@ -1,9 +1,9 @@
 import * as Notifications from "expo-notifications";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useEffect } from "react";
+import { useColorScheme } from "react-native";
 import { SettingsProvider } from "@/settings";
-import { colors } from "@/theme";
-import { loadTrusted, syncTrustedToShortcuts } from "@/trusted-store";
+import { palettes } from "@/theme";
 
 // Show LinkGuard's alerts as a banner even while the app is open.
 Notifications.setNotificationHandler({
@@ -15,23 +15,33 @@ Notifications.setNotificationHandler({
   }),
 });
 
+// Tapping a LinkGuard notification opens the screen it's about (e.g. a text warning opens Text Alerts).
+const SCREENS = new Set(["/alerts", "/gmail"]);
+function openFromNotification(n: Notifications.Notification | undefined) {
+  const url = n?.request.content.data?.url;
+  if (typeof url === "string" && SCREENS.has(url)) router.push(url as "/alerts" | "/gmail");
+}
+
 // Native iPhone navigation: real title bar, Back button, and swipe-back. Home draws its own gradient header.
 export default function RootLayout() {
+  const p = palettes[useColorScheme() === "dark" ? "dark" : "light"]; // title bars need plain colors
   useEffect(() => {
-    // Keep the Shortcuts action's trusted list in step with the keychain copy (e.g. after a reinstall).
-    void loadTrusted().then(syncTrustedToShortcuts);
+    // App opened by tapping a notification, then any taps while it's running.
+    openFromNotification(Notifications.getLastNotificationResponse()?.notification);
+    const sub = Notifications.addNotificationResponseReceivedListener((r) => openFromNotification(r.notification));
+    return () => sub.remove();
   }, []);
 
   return (
     <SettingsProvider>
       <Stack
         screenOptions={{
-          headerTintColor: colors.blue,
-          headerTitleStyle: { color: colors.ink },
+          headerTintColor: p.blue,
+          headerTitleStyle: { color: p.ink },
           headerBackTitle: "Back",
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: colors.bg },
-          contentStyle: { backgroundColor: colors.bg },
+          headerStyle: { backgroundColor: p.bg },
+          contentStyle: { backgroundColor: p.bg },
         }}
       >
         <Stack.Screen name="index" options={{ title: "LinkGuard", headerShown: false }} />

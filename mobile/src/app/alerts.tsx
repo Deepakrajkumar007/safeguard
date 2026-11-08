@@ -4,44 +4,65 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Notifications from "expo-notifications";
 import { useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { formatTrusted, parseTrusted, type TrustedEntry } from "@shared/trusted";
+import { useCallback, useEffect, useState } from "react";
+import { AppState, Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Button, Notice } from "@/components/Button";
-import { IconTile, Row, Section } from "@/components/List";
-import { T, useSettings } from "@/settings";
-import { colors, radius, shadows, spacing, type } from "@/theme";
-import { loadTrusted, saveTrusted } from "@/trusted-store";
+import { T } from "@/settings";
+import { timeAgo } from "@/stats-store";
+import { colors, radius, shadows, spacing } from "@/theme";
+import { addTestWarning, clearWarnings, loadWarnings, type TextWarning } from "@/warnings";
 
 /**
  * Text-message alerts. Apple doesn't let apps read Messages, so the person adds ONE Shortcuts automation
  * with LinkGuard's "Check Message with LinkGuard" action. That action (app-intents/CheckMessageIntent.swift)
- * drops trusted senders on the phone, checks other texts with LinkGuard's rules, and shows a warning.
+ * checks the text with LinkGuard's rules, shows a warning, and adds risky texts to Recent warnings.
  */
 const STEPS: { title: string; detail: string }[] = [
-  { title: "Open Shortcuts and start an automation", detail: "Tap Automation at the bottom, then +, then Message. Choose Run Immediately, then New Blank Automation." },
+  { title: "Start a Message automation", detail: "Open Shortcuts. Tap Automation at the bottom, then +, then Message." },
+  { title: "Type http in Message Contains", detail: "Tap Message Contains, type http, tap Done. Choose Run Immediately, tap Next, then New Blank Automation." },
   { title: "Add LinkGuard's action", detail: 'Search for "LinkGuard" and tap Check Message with LinkGuard.' },
-  { title: "Fill in the two blue words", detail: "Tap Message and choose Shortcut Input. Tap Sender and choose Shortcut Input, then Sender." },
-  { title: "Tap Done", detail: "That's it. LinkGuard now warns you about risky texts, and ignores your trusted senders." },
+  { title: "Fill in the two blue words", detail: "Tap Message and choose Shortcut Input. Tap Sender, choose Shortcut Input, then tap it again and choose Sender." },
+  { title: "Tap Done", detail: "That's it. Texts with links get checked, and risky ones show up in Recent warnings. Texts you send yourself may not trigger it." },
 ];
 
-const KIND_ICON = { phone: "call", email: "mail", name: "person" } as const;
+/** "+17165550123" -> "(716) 555-0123"; contact names and emails stay as Messages shows them. */
+function senderLabel(sender: string): string {
+  const s = sender.trim();
+  if (!s) return "Unknown (Shortcut run by hand)";
+  if (/^[+(\d][\d\s().-]*$/.test(s)) {
+    const digits = s.replace(/\D/g, "");
+    const d = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+    if (d.length === 10) return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  }
+  return s;
+}
 
 export default function AlertsScreen() {
-  const { scale } = useSettings();
-  const [trusted, setTrusted] = useState<TrustedEntry[]>([]);
-  const [draft, setDraft] = useState("");
-  const [draftError, setDraftError] = useState<string | null>(null);
   const [notifOn, setNotifOn] = useState<boolean | null>(null);
   const [tested, setTested] = useState(false);
+  const [warnings, setWarnings] = useState<TextWarning[]>([]);
+  const [now, setNow] = useState(0);
   const native = AppIntents.isAvailable();
+
+  const refreshWarnings = useCallback(() => {
+    setWarnings(loadWarnings());
+    setNow(Date.now());
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      void loadTrusted().then(setTrusted);
       void Notifications.getPermissionsAsync().then((p) => setNotifOn(p.granted));
-    }, []),
+      refreshWarnings();
+    }, [refreshWarnings]),
   );
+
+  // The Shortcuts action can add a warning while the app sits in the background: refresh on return.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (s) => {
+      if (s === "active") refreshWarnings();
+    });
+    return () => sub.remove();
+  }, [refreshWarnings]);
 
   const enableNotifications = async () => {
     const p = await Notifications.requestPermissionsAsync();
@@ -50,34 +71,16 @@ export default function AlertsScreen() {
   };
 
   const sendTest = async () => {
+    const title = "LinkGuard: High risk text";
+    const body = "Looks like a fake delivery notice. Don't tap the link.";
+    // Also add a sample card to Recent warnings (marked as a test), so the whole flow can be seen.
+    addTestWarning("high", title, body, "USPS: Your package could not be delivered. Update now: https://usps.com-redelivery.info/track", "LinkGuard test");
+    refreshWarnings();
     await Notifications.scheduleNotificationAsync({
-      content: { title: "LinkGuard: High risk text", body: "Looks like a fake delivery notice. Don't tap the link. (This is a test.)" },
+      content: { title, body: `${body} (This is a test.)`, data: { url: "/alerts" } },
       trigger: null,
     });
     setTested(true);
-  };
-
-  const add = async () => {
-    const entry = parseTrusted(draft);
-    if (!entry) {
-      setDraftError("Enter a phone number, an email like mom@icloud.com, or a contact name.");
-      return;
-    }
-    if (trusted.some((t) => t.kind === entry.kind && t.value === entry.value)) {
-      setDraft("");
-      return;
-    }
-    const next = [...trusted, entry].slice(0, 100);
-    setTrusted(next);
-    setDraft("");
-    setDraftError(null);
-    await saveTrusted(next);
-  };
-
-  const remove = async (entry: TrustedEntry) => {
-    const next = trusted.filter((t) => !(t.kind === entry.kind && t.value === entry.value));
-    setTrusted(next);
-    await saveTrusted(next);
   };
 
   return (
@@ -86,7 +89,7 @@ export default function AlertsScreen() {
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{ padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg }}
     >
-      <StatusBar style="dark" />
+      <StatusBar style="auto" />
 
       {/* Status card */}
       <LinearGradient colors={colors.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.status}>
@@ -94,8 +97,8 @@ export default function AlertsScreen() {
           Get warned about scam texts
         </T>
         <T variant="callout" color={colors.onGradientMuted}>
-          Apple doesn&apos;t let apps read your messages, so you add one Shortcut. Texts from your trusted senders never leave this
-          iPhone.
+          Apple doesn&apos;t let apps read your messages, so you add one Shortcut. LinkGuard then checks texts with links and warns
+          you about risky ones.
         </T>
         <View style={styles.statusRow}>
           <View style={styles.pill}>
@@ -105,9 +108,9 @@ export default function AlertsScreen() {
             </T>
           </View>
           <View style={styles.pill}>
-            <Ionicons name="people" size={16} color={colors.white} />
+            <Ionicons name="warning" size={16} color={colors.white} />
             <T variant="footnote" weight="600" color={colors.white}>
-              {trusted.length} trusted
+              {warnings.length} {warnings.length === 1 ? "warning" : "warnings"}
             </T>
           </View>
         </View>
@@ -126,6 +129,72 @@ export default function AlertsScreen() {
         <Notice tone="caution" icon="information-circle">
           The LinkGuard Shortcuts action needs the installed LinkGuard app (it isn&apos;t available inside Expo Go).
         </Notice>
+      )}
+
+      {/* Recent warnings: texts the Shortcuts action flagged, who sent them, and why (kept on this iPhone only). */}
+      {native && (
+        <View style={{ gap: spacing.smd }}>
+          <View style={styles.sectionHead}>
+            <T variant="headline" accessibilityRole="header">
+              Recent warnings
+            </T>
+            {warnings.length > 0 && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Clear recent warnings"
+                hitSlop={10}
+                onPress={() => {
+                  clearWarnings();
+                  refreshWarnings();
+                }}
+              >
+                <T variant="subhead" weight="600" color={colors.blue}>
+                  Clear
+                </T>
+              </Pressable>
+            )}
+          </View>
+          {warnings.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="shield-checkmark-outline" size={28} color={colors.violet} />
+              <T variant="subhead" color={colors.muted} style={{ textAlign: "center" }}>
+                No warnings yet. When the Shortcut flags a text, it shows up here with who sent it, even if you missed the
+                notification.
+              </T>
+            </View>
+          ) : (
+            warnings.map((w) => (
+              <View key={`${w.at}-${w.title}`} style={[styles.warnCard, { borderLeftColor: colors.risk[w.level].fg }]}>
+                <View style={[styles.warnIcon, { backgroundColor: colors.risk[w.level].bg }]}>
+                  <Ionicons name="warning" size={20} color={colors.risk[w.level].fg} />
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T variant="headline" color={colors.risk[w.level].fg}>
+                    {colors.risk[w.level].label}
+                    {w.test ? " (test)" : ""}
+                  </T>
+                  <T variant="subhead" weight="600">
+                    From: {senderLabel(w.sender)}
+                  </T>
+                  {w.message !== "" && (
+                    <View style={styles.quote}>
+                      <T variant="subhead" numberOfLines={6} selectable>
+                        {w.message}
+                      </T>
+                    </View>
+                  )}
+                  <T variant="subhead" color={colors.muted}>
+                    {w.body || w.title}
+                  </T>
+                  <T variant="footnote" color={colors.muted}>
+                    {now ? timeAgo(w.at, now) : ""}
+                    {w.notified ? "" : " · shown by Shortcuts"}
+                  </T>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
       )}
 
       {/* Setup steps */}
@@ -158,56 +227,10 @@ export default function AlertsScreen() {
         />
       </View>
 
-      {/* Trusted senders */}
-      <Section
-        title="Trusted senders"
-        footer="LinkGuard ignores texts from these people. The check happens on this iPhone, so their texts are never sent anywhere. Use a phone number, an iCloud email, or a contact name exactly as Messages shows it."
-      >
-        {trusted.map((t) => (
-          <Row
-            key={`${t.kind}:${t.value}`}
-            left={<IconTile icon={KIND_ICON[t.kind]} color={colors.tile.texts} />}
-            title={formatTrusted(t)}
-            subtitle={t.kind === "phone" ? "Phone number" : t.kind === "email" ? "Email / iCloud" : "Contact name"}
-            right={
-              <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${formatTrusted(t)}`} hitSlop={10} onPress={() => remove(t)}>
-                <Ionicons name="remove-circle" size={24} color={colors.risk.high.fg} />
-              </Pressable>
-            }
-          />
-        ))}
-        <View style={styles.addRow}>
-          <TextInput
-            value={draft}
-            onChangeText={(v) => {
-              setDraft(v);
-              setDraftError(null);
-            }}
-            onSubmitEditing={add}
-            placeholder="(716) 555-0123 or mom@icloud.com"
-            placeholderTextColor={colors.placeholder}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="done"
-            accessibilityLabel="Trusted sender to add"
-            style={[styles.addInput, { fontSize: Math.round(type.body.fontSize * scale) }]}
-          />
-          <Pressable accessibilityRole="button" onPress={add} hitSlop={8}>
-            <T variant="headline" color={colors.blue}>
-              Add
-            </T>
-          </Pressable>
-        </View>
-      </Section>
-      {draftError && (
-        <T variant="footnote" weight="600" color={colors.risk.high.fg} style={{ marginHorizontal: spacing.xs, marginTop: -spacing.md }}>
-          {draftError}
-        </T>
-      )}
-
       <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
-        Privacy: other texts are checked by LinkGuard&apos;s rules only (no AI) and nothing is saved. Tip: in step 1 you can set
-        &quot;Message Contains&quot; to http so only texts with links are checked.
+        Privacy: other texts are checked by LinkGuard&apos;s rules only (no AI), and the server saves nothing. Only texts LinkGuard
+        warns you about are kept, on this iPhone, in Recent warnings (last 20; tap Clear to delete them). Tip: to check texts
+        without links too, type the letter e instead of http in step 2.
       </T>
     </ScrollView>
   );
@@ -234,7 +257,20 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     boxShadow: shadows.card,
   },
+  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: spacing.xs },
+  emptyCard: { backgroundColor: colors.card, borderRadius: radius.xl, borderCurve: "continuous", padding: spacing.lg, gap: spacing.sm, alignItems: "center", boxShadow: shadows.card },
+  warnCard: {
+    flexDirection: "row",
+    gap: spacing.smd,
+    backgroundColor: colors.card,
+    borderRadius: radius.xl,
+    borderCurve: "continuous",
+    borderLeftWidth: 4,
+    padding: spacing.md,
+    alignItems: "flex-start",
+    boxShadow: shadows.card,
+  },
+  quote: { backgroundColor: colors.bg, borderRadius: radius.md, borderCurve: "continuous", padding: spacing.smd, marginVertical: spacing.xs },
+  warnIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   num: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.violetSoft, alignItems: "center", justifyContent: "center" },
-  addRow: { flexDirection: "row", alignItems: "center", gap: spacing.smd, paddingHorizontal: spacing.md, minHeight: 56 },
-  addInput: { flex: 1, color: colors.ink, paddingVertical: spacing.smd },
 });
