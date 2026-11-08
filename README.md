@@ -1,13 +1,13 @@
-# LinkGuard
+# SafeGuard
 
 **Protection from scam emails, fake websites, and scam texts, explained in plain English. Built for older adults.**
 
-LinkGuard is an iPhone app that scans your recent Gmail for scam emails, opens bank and shopping websites only at
+SafeGuard is an iPhone app that scans your recent Gmail for scam emails, opens bank and shopping websites only at
 their real addresses, warns you when a scam text arrives, and checks any message you paste in. It never says a
 message is "safe". It only says whether it found warning signs, and why.
 
 <p>
-  <img src="docs/images/app-home.png" width="230" alt="LinkGuard home screen in dark mode: stats, three features, and Check a message" />
+  <img src="docs/images/app-home.png" width="230" alt="SafeGuard home screen in dark mode: stats, three features, and Check a message" />
   <img src="docs/images/app-open-site.png" width="230" alt="Open a website safely: verified chase.com" />
   <img src="docs/images/app-gmail.png" width="230" alt="Scan my Gmail with privacy limits" />
 </p>
@@ -23,9 +23,9 @@ tools show a red or green light without explaining why.
 
 | Feature | How it works |
 |---|---|
-| **Scan my Gmail** | Sign in with Google (read-only). LinkGuard checks **only the last 24 hours** of email, skips a **never-scan list** of senders you choose, and uses its rule-based checker only (no AI). Risky emails are listed with the reasons, and you get a notification. Emails Gmail verified (DMARC) as really from a brand on the verified list aren't flagged. |
-| **Open a website safely** | Say "Chase" with the keyboard microphone, or type it. LinkGuard shows the real address from a fixed list of 35 verified brands and opens exactly that. Speech is never turned into a web address; typed addresses open only on an exact hostname match, and look-alikes like `chase-secure-login.top` are refused. |
-| **Text message alerts** | Apple doesn't let apps read Messages, so you add one iOS Shortcuts automation that uses LinkGuard's own **"Check Message with LinkGuard"** action. When a text with a link arrives, you get a LinkGuard notification like *"High risk text. Looks like a fake delivery notice. Don't tap the link."* Tapping it opens **Recent warnings**: the risky text, who sent it, and why. [Guide](docs/IPHONE-TEXT-ALERTS.md) |
+| **Scan my Gmail** | Sign in with Google (read-only). SafeGuard checks **only the last 24 hours** of email, skips a **never-scan list** of senders you choose, and uses its rule-based checker only (no AI). Risky emails are listed with the reasons, and you get a notification. Emails Gmail verified (DMARC) as really from a brand on the verified list aren't flagged. |
+| **Open a website safely** | Say "Chase" with the keyboard microphone, or type it. SafeGuard shows the real address from a fixed list of 35 verified brands and opens exactly that. Speech is never turned into a web address; typed addresses open only on an exact hostname match, and look-alikes like `chase-secure-login.top` are refused. |
+| **Text message alerts** | Apple doesn't let apps read Messages, so you add one iOS Shortcuts automation that uses SafeGuard's own **"Check Message with SafeGuard"** action. When a text with a link arrives, you get a SafeGuard notification like *"High risk text. Looks like a fake delivery notice. Don't tap the link."* Tapping it opens **Recent warnings**: the risky text, who sent it, and why. [Guide](docs/IPHONE-TEXT-ALERTS.md) |
 | **Check a message** | On the Home screen: paste any text or email and see the verdict right away. There's a one-tap example scam text for trying it out. |
 | **Dashboard** | Emails checked, risky emails, risky texts, and when Gmail was last scanned. |
 | **Accessibility** | Native iPhone layout, a **Larger text** switch on top of iOS text size, a **Dark mode** switch (starts out matching the iPhone), big buttons, short plain sentences. |
@@ -57,9 +57,9 @@ flowchart LR
     G[Scan my Gmail]
     O[Open a website safely]
     P[Check a message]
-    A["'Check Message with LinkGuard'<br/>Shortcuts action (Swift App Intent)"]
+    A["'Check Message with SafeGuard'<br/>Shortcuts action (Swift App Intent)"]
     RW[(Recent warnings<br/>on this iPhone only)]
-    N[LinkGuard notification]
+    N[SafeGuard notification]
   end
   S["iOS Shortcuts automation<br/>'When I get a message' containing http"] -->|text + sender| A
   O -->|verified brand list, on the phone| L[Shared launcher<br/>src/lib]
@@ -67,7 +67,7 @@ flowchart LR
   P -->|pasted text| SH
   A --> N
   A --> RW
-  subgraph Server["LinkGuard server (Next.js on Vercel)"]
+  subgraph Server["SafeGuard server (Next.js on Vercel)"]
     GM[/api/gmail/*/]
     SH[/api/shortcut/]
     C[Shared checker]
@@ -88,7 +88,7 @@ and inline Swift module (Shortcuts action, Recent warnings), Next.js 16 + React 
 ```
 mobile/src/app/       iPhone screens: Home (dashboard + Check a message), Scan my Gmail, Open a website, Text alerts
 mobile/src/           theme (light/dark design tokens), shared components, Gmail, warnings, keyboard handling
-mobile/app-intents/   Swift: the "Check Message with LinkGuard" Shortcuts action and the Recent warnings store
+mobile/app-intents/   Swift: the "Check Message with SafeGuard" Shortcuts action and the Recent warnings store
 src/lib/              shared logic: checker, brands, launcher, Gmail rules, never-scan list, reputation
 src/app/api/          server routes: gmail/{start,callback,scan,signout}, shortcut, check, explain, screenshot, reputation
 src/components/       web app UI (backup demo)
@@ -101,8 +101,8 @@ docs/                 privacy, Gmail setup, text alerts, demo script
 and a free Apple ID. (Expo Go can run most screens, but not the Shortcuts action, which needs the installed app.)
 
 ```bash
-git clone https://github.com/Deepakrajkumar007/linkguard.git
-cd linkguard
+git clone https://github.com/Deepakrajkumar007/safeguard.git
+cd safeguard
 npm install
 cp .env.example .env.local   # then fill in the keys (see below)
 npm run dev                  # server + web app at http://localhost:3000
@@ -120,7 +120,7 @@ npm install
 npx expo prebuild -p ios
 npx expo run:ios --device --configuration Release
 # If signing fails, build with Xcode's command line instead:
-#   cd ios && xcodebuild -workspace LinkGuard.xcworkspace -scheme LinkGuard -configuration Release \
+#   cd ios && xcodebuild -workspace SafeGuard.xcworkspace -scheme SafeGuard -configuration Release \
 #     -destination id=<iPhone UDID> -allowProvisioningUpdates -allowProvisioningDeviceRegistration build
 ```
 Set your own `ios.bundleIdentifier` and `ios.appleTeamId` in `mobile/app.json`. Free Apple ID installs last 7 days.
@@ -151,14 +151,14 @@ Every feature degrades gracefully: without keys, the rule-based checker still wo
   names, verified senders, real Facebook mail vs. fake Facebook senders, calm marketing emails
 - OAuth tokens, rate limits, prompt-injection fencing, and the "never says safe" filter
 
-The iPhone flow was tested on a real iPhone 15 Pro: the Shortcuts action checks the text, posts LinkGuard's
+The iPhone flow was tested on a real iPhone 15 Pro: the Shortcuts action checks the text, posts SafeGuard's
 notification, and adds it to Recent warnings.
 
 ## Privacy and safety
 
 Short version: Gmail scanning is limited to 24 hours, skips senders you choose, uses no AI, and returns only
 summaries to the phone. The Shortcuts action sends only the message text to the server; the server stores nothing.
-Texts LinkGuard warns you about are kept **only on your iPhone** (last 20, one tap to clear). Only links go to Google
+Texts SafeGuard warns you about are kept **only on your iPhone** (last 20, one tap to clear). Only links go to Google
 Safe Browsing. Full details, including what each third party receives: **[docs/PRIVACY.md](docs/PRIVACY.md)**.
 
 ## Limitations (honest)
@@ -171,7 +171,7 @@ Safe Browsing. Full details, including what each third party receives: **[docs/P
 - **Recent warnings** are stored in the app's private storage on the iPhone (not the keychain), so they're as safe as
   the phone's own lock. They're limited to the last 20 and can be cleared.
 - **Gmail** uses Google's testing mode (up to 100 test users). The `gmail.readonly` permission can read all mail;
-  the 24-hour window and never-scan list are enforced by LinkGuard's code. Public launch needs Google verification.
+  the 24-hour window and never-scan list are enforced by SafeGuard's code. Public launch needs Google verification.
 - **Brand coverage:** 35 verified brands. Others get only the general checks.
 - **Builds:** a free Apple ID can install the app on your own iPhone for 7 days. TestFlight and the App Store need
   the Apple Developer Program.

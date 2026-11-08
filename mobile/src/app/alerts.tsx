@@ -14,13 +14,13 @@ import { addTestWarning, clearWarnings, loadWarnings, type TextWarning } from "@
 
 /**
  * Text-message alerts. Apple doesn't let apps read Messages, so the person adds ONE Shortcuts automation
- * with LinkGuard's "Check Message with LinkGuard" action. That action (app-intents/CheckMessageIntent.swift)
- * checks the text with LinkGuard's rules, shows a warning, and adds risky texts to Recent warnings.
+ * with SafeGuard's "Check Message with SafeGuard" action. That action (app-intents/CheckMessageIntent.swift)
+ * checks the text with SafeGuard's rules, shows a warning, and adds risky texts to Recent warnings.
  */
 const STEPS: { title: string; detail: string }[] = [
   { title: "Start a Message automation", detail: "Open Shortcuts. Tap Automation at the bottom, then +, then Message." },
   { title: "Type http in Message Contains", detail: "Tap Message Contains, type http, tap Done. Choose Run Immediately, tap Next, then New Blank Automation." },
-  { title: "Add LinkGuard's action", detail: 'Search for "LinkGuard" and tap Check Message with LinkGuard.' },
+  { title: "Add SafeGuard's action", detail: 'Search for "SafeGuard" and tap Check Message with SafeGuard.' },
   { title: "Fill in the two blue words", detail: "Tap Message and choose Shortcut Input. Tap Sender, choose Shortcut Input, then tap it again and choose Sender." },
   { title: "Tap Done", detail: "That's it. Texts with links get checked, and risky ones show up in Recent warnings. Texts you send yourself may not trigger it." },
 ];
@@ -71,10 +71,10 @@ export default function AlertsScreen() {
   };
 
   const sendTest = async () => {
-    const title = "LinkGuard: High risk text";
+    const title = "SafeGuard: High risk text";
     const body = "Looks like a fake delivery notice. Don't tap the link.";
     // Also add a sample card to Recent warnings (marked as a test), so the whole flow can be seen.
-    addTestWarning("high", title, body, "USPS: Your package could not be delivered. Update now: https://usps.com-redelivery.info/track", "LinkGuard test");
+    addTestWarning("high", title, body, "USPS: Your package could not be delivered. Update now: https://usps.com-redelivery.info/track", "SafeGuard test");
     refreshWarnings();
     await Notifications.scheduleNotificationAsync({
       content: { title, body: `${body} (This is a test.)`, data: { url: "/alerts" } },
@@ -97,7 +97,7 @@ export default function AlertsScreen() {
           Get warned about scam texts
         </T>
         <T variant="callout" color={colors.onGradientMuted}>
-          Apple doesn&apos;t let apps read your messages, so you add one Shortcut. LinkGuard then checks texts with links and warns
+          Apple doesn&apos;t let apps read your messages, so you add one Shortcut. SafeGuard then checks texts with links and warns
           you about risky ones.
         </T>
         <View style={styles.statusRow}>
@@ -119,7 +119,7 @@ export default function AlertsScreen() {
       {notifOn === false && (
         <View style={{ gap: spacing.smd }}>
           <Notice tone="caution" icon="notifications-off">
-            Notifications are off, so LinkGuard can&apos;t warn you. Turn them on first.
+            Notifications are off, so SafeGuard can&apos;t warn you. Turn them on first.
           </Notice>
           <Button title="Turn on notifications" icon="notifications" onPress={enableNotifications} />
         </View>
@@ -127,7 +127,7 @@ export default function AlertsScreen() {
 
       {!native && (
         <Notice tone="caution" icon="information-circle">
-          The LinkGuard Shortcuts action needs the installed LinkGuard app (it isn&apos;t available inside Expo Go).
+          The SafeGuard Shortcuts action needs the installed SafeGuard app (it isn&apos;t available inside Expo Go).
         </Notice>
       )}
 
@@ -228,7 +228,7 @@ export default function AlertsScreen() {
       </View>
 
       <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
-        Privacy: other texts are checked by LinkGuard&apos;s rules only (no AI), and the server saves nothing. Only texts LinkGuard
+        Privacy: other texts are checked by SafeGuard&apos;s rules only (no AI), and the server saves nothing. Only texts SafeGuard
         warns you about are kept, on this iPhone, in Recent warnings (last 20; tap Clear to delete them). Tip: to check texts
         without links too, type the letter e instead of http in step 2.
       </T>

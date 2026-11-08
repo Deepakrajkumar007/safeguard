@@ -1,10 +1,10 @@
-# LinkGuard 2-minute demo
+# SafeGuard 2-minute demo
 
-One story: **an older relative gets a scam text, and LinkGuard warns her and shows her why.**
+One story: **an older relative gets a scam text, and SafeGuard warns her and shows her why.**
 "Linda" is a stand-in name; use your own relative's story if you have one.
 
 Mirror the iPhone to the projector: Mac **QuickTime Player → File → New Movie Recording → (arrow next to record) →
-choose the iPhone**. Turn **Larger text** on in LinkGuard's Settings so the room can read it. Pick Light or Dark with
+choose the iPhone**. Turn **Larger text** on in SafeGuard's Settings so the room can read it. Pick Light or Dark with
 the **Dark mode** switch, whichever shows better on the projector.
 
 ## Script (about 2:00)
@@ -17,17 +17,17 @@ the **Dark mode** switch, whichever shows better on the projector.
 ```
 USPS: Your package could not be delivered. Update now: https://usps.com-redelivery.info/track
 ```
-> "Seconds later, LinkGuard warns her: high risk, fake delivery notice, don't tap the link."
-*(show the notification, tap it: LinkGuard opens Text alerts → Recent warnings)*
+> "Seconds later, SafeGuard warns her: high risk, fake delivery notice, don't tap the link."
+*(show the notification, tap it: SafeGuard opens Text alerts → Recent warnings)*
 > "Apple doesn't let any app read your messages, so Linda added one Shortcut, once. Even if she missed the
 > notification, here's the text, who sent it, and why it's risky. And that list stays on her phone."
 
 **0:45–1:05 · Going to the real bank site**
 *(Back → Open a website → tap the box → keyboard mic → say "Chase")*
-> "When Linda wants her bank, she says 'Chase.' Her voice never becomes a web address; LinkGuard only opens addresses
+> "When Linda wants her bank, she says 'Chase.' Her voice never becomes a web address; SafeGuard only opens addresses
 > from a verified list, so she lands on the real chase.com."
 *(type `chase-secure-login.top`)*
-> "Type a look-alike address and LinkGuard refuses to open it."
+> "Type a look-alike address and SafeGuard refuses to open it."
 
 **1:05–1:25 · Anything else she's unsure about**
 *(Back → Home → Check a message → paste a suspicious message, or tap "Try an example scam text" → Check this message)*
@@ -39,15 +39,15 @@ USPS: Your package could not be delivered. Update now: https://usps.com-redelive
 > Real emails that Gmail verified from her bank or from Facebook aren't flagged."
 
 **1:45–2:00 · Close**
-> "LinkGuard: real warnings, real websites, and the reasons behind them. It never says 'safe', it shows the warning
+> "SafeGuard: real warnings, real websites, and the reasons behind them. It never says 'safe', it shows the warning
 > signs. Built so Linda doesn't need us on the phone every time a text looks weird."
 
 ## Pre-demo checklist (30 minutes before)
 
 - [ ] iPhone charged; **Do Not Disturb and Focus off** (they hide notifications); volume up.
-- [ ] LinkGuard installed from Xcode within the last 7 days, and it opens.
-- [ ] LinkGuard → Text alerts shows **Notifications on**.
-- [ ] Shortcuts automation built (Message Contains `http`, Run Immediately, **Check Message with LinkGuard** with
+- [ ] SafeGuard installed from Xcode within the last 7 days, and it opens.
+- [ ] SafeGuard → Text alerts shows **Notifications on**.
+- [ ] Shortcuts automation built (Message Contains `http`, Run Immediately, **Check Message with SafeGuard** with
       Message and Sender filled in). Tested once with a text from the teammate's phone.
 - [ ] **Clear** old cards in Recent warnings so the new one stands out.
 - [ ] **Sign in to Gmail in the app within the hour before the demo** (access lasts about 1 hour). Run one scan.
@@ -70,10 +70,10 @@ USPS: Your package could not be delivered. Update now: https://usps.com-redelive
 - **"How accurate is it?"** "We haven't benchmarked it on a big dataset yet; that's on the roadmap. We test 37 real
   bank and government login links for zero false alarms, plus scam samples and look-alikes: 208 automated tests."
 - **"Can it read iMessages?"** "No app can. Apple blocks it. The user adds one Shortcut that hands new texts with links
-  to LinkGuard's own action. That's the honest way to do it."
+  to SafeGuard's own action. That's the honest way to do it."
 - **"What leaves the phone?"** "For texts, only the message text goes to our rule-based checker, and the server
   doesn't save it. The sender and the list of warnings stay on the phone."
 - **"Privacy for Gmail?"** "Read-only, last 24 hours, never-scan senders skipped before their emails are downloaded,
   no AI, no storage, about one hour of access, and sign-out revokes it."
-- **"Why not just a spam filter?"** "Filters are silent and still miss things. LinkGuard shows Linda why, so she
+- **"Why not just a spam filter?"** "Filters are silent and still miss things. SafeGuard shows Linda why, so she
   recognizes the next one."

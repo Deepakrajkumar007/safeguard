@@ -4,20 +4,20 @@ import OSLog
 import UserNotifications
 internal import ExpoAppIntents
 
-/// "Check Message with LinkGuard": a Shortcuts action for the "When I get a message" automation.
+/// "Check Message with SafeGuard": a Shortcuts action for the "When I get a message" automation.
 ///
-/// 1. The text goes to LinkGuard's rule-based checker (no AI). Only the message text is sent.
+/// 1. The text goes to SafeGuard's rule-based checker (no AI). Only the message text is sent.
 /// 2. The sender stays on this iPhone; it's only shown in Recent warnings so you know who texted.
-/// 3. A risky result is shown as a LinkGuard notification and added to the app's "Recent warnings"
+/// 3. A risky result is shown as a SafeGuard notification and added to the app's "Recent warnings"
 ///    (the risky text and its sender, kept only on this iPhone). Tapping the notification opens Text Alerts.
-/// 4. If LinkGuard can't show its notification, the warning is handed to Shortcuts to show instead.
+/// 4. If SafeGuard can't show its notification, the warning is handed to Shortcuts to show instead.
 ///
 /// Diagnostics: `log stream`/Console lines tagged "LGTRACE" record each step. They contain the verdict
 /// level only, never the message, the sender, or the links.
 private let trace = Logger(subsystem: "com.deepakrajkumar.linkguard", category: "TextCheck")
 
 struct CheckMessageIntent: AppIntent {
-  static let title: LocalizedStringResource = "Check Message with LinkGuard"
+  static let title: LocalizedStringResource = "Check Message with SafeGuard"
   static let description = IntentDescription(
     "Checks a text message for scam warning signs and warns you if it looks risky."
   )
@@ -30,38 +30,38 @@ struct CheckMessageIntent: AppIntent {
   var sender: String?
 
   static var parameterSummary: some ParameterSummary {
-    Summary("Check \(\.$message) from \(\.$sender) with LinkGuard")
+    Summary("Check \(\.$message) from \(\.$sender) with SafeGuard")
   }
 
   func perform() async throws -> some IntentResult & ReturnsValue<String> {
     trace.notice("LGTRACE start hasSender=\(!(sender ?? "").isEmpty, privacy: .public)")
-    guard let verdict = await LinkGuardServer.check(message) else {
+    guard let verdict = await SafeGuardServer.check(message) else {
       trace.error("LGTRACE server check failed")
       return .result(value: "")
     }
     trace.notice("LGTRACE verdict level=\(verdict.level, privacy: .public) show=\(verdict.show, privacy: .public)")
     guard verdict.show else { return .result(value: "") }
 
-    let notified = await LinkGuardNotifier.show(title: verdict.title, body: verdict.body)
+    let notified = await SafeGuardNotifier.show(title: verdict.title, body: verdict.body)
     WarningLog.add(
       level: verdict.level, title: verdict.title, body: verdict.body,
       message: message, sender: sender ?? "", notified: notified
     )
     if !notified {
       // Never silent: Shortcuts shows a thrown error's message as its own notification.
-      throw LinkGuardWarning(message: verdict.notification)
+      throw SafeGuardWarning(message: verdict.notification)
     }
     return .result(value: verdict.notification)
   }
 }
 
-/// Used only when LinkGuard's own notification couldn't be shown, so Shortcuts displays the warning.
-struct LinkGuardWarning: Error, CustomLocalizedStringResourceConvertible {
+/// Used only when SafeGuard's own notification couldn't be shown, so Shortcuts displays the warning.
+struct SafeGuardWarning: Error, CustomLocalizedStringResourceConvertible {
   let message: String
   var localizedStringResource: LocalizedStringResource { "\(message)" }
 }
 
-struct LinkGuardVerdict {
+struct SafeGuardVerdict {
   let show: Bool
   let level: String
   let title: String
@@ -69,10 +69,10 @@ struct LinkGuardVerdict {
   let notification: String
 }
 
-/// Sends only the message text to the LinkGuard server's rule-based checker.
+/// Sends only the message text to the SafeGuard server's rule-based checker.
 /// The server address and app key come from Info.plist (set at build time from mobile/.env.local).
-enum LinkGuardServer {
-  static func check(_ text: String) async -> LinkGuardVerdict? {
+enum SafeGuardServer {
+  static func check(_ text: String) async -> SafeGuardVerdict? {
     guard let base = Bundle.main.object(forInfoDictionaryKey: "LinkGuardAPIBase") as? String,
           !base.isEmpty,
           let url = URL(string: base.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/api/shortcut")
@@ -92,10 +92,10 @@ enum LinkGuardServer {
       guard (response as? HTTPURLResponse)?.statusCode == 200,
             let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
       else { return nil }
-      return LinkGuardVerdict(
+      return SafeGuardVerdict(
         show: (json["show"] as? String) == "yes",
         level: json["level"] as? String ?? "none",
-        title: json["title"] as? String ?? "LinkGuard",
+        title: json["title"] as? String ?? "SafeGuard",
         body: json["body"] as? String ?? "",
         notification: json["notification"] as? String ?? ""
       )
@@ -105,7 +105,7 @@ enum LinkGuardServer {
   }
 }
 
-enum LinkGuardNotifier {
+enum SafeGuardNotifier {
   /// Returns true only if iOS accepted the notification.
   static func show(title: String, body: String) async -> Bool {
     let center = UNUserNotificationCenter.current()
@@ -118,7 +118,7 @@ enum LinkGuardNotifier {
     content.body = body
     content.sound = .default
     content.threadIdentifier = "linkguard-texts"
-    content.userInfo = ["url": "/alerts"] // tapping it opens LinkGuard's Text Alerts screen
+    content.userInfo = ["url": "/alerts"] // tapping it opens SafeGuard's Text Alerts screen
     let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
     do {
       try await center.add(request)

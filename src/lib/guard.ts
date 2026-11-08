@@ -56,7 +56,7 @@ export function isAllowedClient(req: Request): boolean {
 /** Returns an error Response to send back, or null if the request may continue. */
 export function guard(req: Request, route: string, perMinute: number): Response | null {
   if (!isAllowedClient(req)) {
-    return Response.json({ error: "This LinkGuard server only answers the LinkGuard app and website." }, { status: 401 });
+    return Response.json({ error: "This SafeGuard server only answers the SafeGuard app and website." }, { status: 401 });
   }
   if (!allow(`${route}:${clientIp(req)}`, perMinute)) {
     return Response.json({ error: "Too many checks in a short time. Please wait a minute and try again." }, { status: 429 });

@@ -99,7 +99,7 @@ export default function OpenSite() {
       {/* An address we don't know: never open it. */}
       {match.unknownAddress && !picked && (
         <Notice tone="caution" icon="warning">
-          That address isn&apos;t on our verified list, so LinkGuard won&apos;t open it. Say the company&apos;s name instead.
+          That address isn&apos;t on our verified list, so SafeGuard won&apos;t open it. Say the company&apos;s name instead.
         </Notice>
       )}
 

@@ -55,7 +55,7 @@ describe("never-scan list and 24-hour window", () => {
 });
 
 describe("OAuth return address", () => {
-  it("only returns into the LinkGuard app", () => {
+  it("only returns into the SafeGuard app", () => {
     expect(safeReturnUrl("exp://10.0.0.5:8081/--/gmail")).toBeTruthy();
     expect(safeReturnUrl("linkguard://gmail")).toBeTruthy();
     expect(safeReturnUrl("https://evil.example/steal")).toBeNull();

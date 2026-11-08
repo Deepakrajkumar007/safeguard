@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 
 /**
- * Where the LinkGuard server lives.
+ * Where the SafeGuard server lives.
  * - EXPO_PUBLIC_API_URL (e.g. the deployed https URL) wins if set.
  * - Otherwise, in development, use the laptop that's running Expo: same IP, port 3000.
  */

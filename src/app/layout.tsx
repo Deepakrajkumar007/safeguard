@@ -8,8 +8,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LinkGuard",
-  description: "Check a suspicious text, link, or call. LinkGuard explains the warning signs in plain English.",
+  title: "SafeGuard",
+  description: "Check a suspicious text, link, or call. SafeGuard explains the warning signs in plain English.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

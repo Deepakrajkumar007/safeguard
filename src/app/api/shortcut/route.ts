@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   const alert = r.level === "high" || r.level === "caution";
   // Diagnostics only: the verdict level, never the message, sender, or links.
   console.info(`[shortcut] checked source=${source} level=${r.level} alert=${alert}`);
-  const title = r.level === "high" ? "LinkGuard: High risk text" : r.level === "caution" ? "LinkGuard: Be careful" : "LinkGuard";
+  const title = r.level === "high" ? "SafeGuard: High risk text" : r.level === "caution" ? "SafeGuard: Be careful" : "SafeGuard";
   const lead = r.scamType ? `Looks like a ${r.scamType.label.toLowerCase()}.` : r.headline + ".";
   const step = r.nextSteps[0] ?? "";
   const note = `${lead} ${step}`.trim().slice(0, 180);

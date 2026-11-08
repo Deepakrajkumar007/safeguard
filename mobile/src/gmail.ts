@@ -9,7 +9,7 @@ export { endingTypoHint };
 
 /**
  * Gmail on the phone. The phone never sees your Google password or a long-lived token: it keeps only a
- * sealed 1-hour session from the LinkGuard server, in the iPhone's encrypted keychain (SecureStore).
+ * sealed 1-hour session from the SafeGuard server, in the iPhone's encrypted keychain (SecureStore).
  */
 
 const SESSION_KEY = "lg.gmailSession";
@@ -55,7 +55,7 @@ export type SignInResult = { ok: true } | { ok: false; message: string };
 
 const SIGN_IN_ERRORS: Record<string, string> = {
   denied: "Sign-in was cancelled.",
-  scope: "LinkGuard needs the 'Read your email' permission to scan. Please tick that box when signing in.",
+  scope: "SafeGuard needs the 'Read your email' permission to scan. Please tick that box when signing in.",
   state: "Sign-in check failed. Please try again.",
   token: "Google didn't finish the sign-in. Please try again.",
   network: "Couldn't reach Google. Check your internet and try again.",
@@ -63,7 +63,7 @@ const SIGN_IN_ERRORS: Record<string, string> = {
 
 export async function signIn(): Promise<SignInResult> {
   const base = apiBase();
-  if (!base) return { ok: false, message: "The LinkGuard server isn't set up on this phone." };
+  if (!base) return { ok: false, message: "The SafeGuard server isn't set up on this phone." };
   const returnUrl = Linking.createURL("gmail");
   const start = `${base}/api/gmail/start?return=${encodeURIComponent(returnUrl)}`;
   const result = await WebBrowser.openAuthSessionAsync(start, returnUrl);
@@ -96,7 +96,7 @@ export type ScanOutcome = { ok: true; data: ScanResult } | { ok: false; message:
 export async function scan(skip: string[]): Promise<ScanOutcome> {
   const base = apiBase();
   const token = await getSession();
-  if (!base) return { ok: false, message: "The LinkGuard server isn't set up on this phone." };
+  if (!base) return { ok: false, message: "The SafeGuard server isn't set up on this phone." };
   if (!token) return { ok: false, message: "Please sign in with Google first.", expired: true };
   try {
     const res = await fetch(`${base}/api/gmail/scan`, {
@@ -109,7 +109,7 @@ export async function scan(skip: string[]): Promise<ScanOutcome> {
     if (!res.ok) return { ok: false, message: data.error ?? "The scan didn't work. Try again.", expired: res.status === 401 };
     return { ok: true, data: data as ScanResult };
   } catch {
-    return { ok: false, message: "Couldn't reach LinkGuard. Check your internet and try again." };
+    return { ok: false, message: "Couldn't reach SafeGuard. Check your internet and try again." };
   }
 }
 
@@ -148,8 +148,8 @@ export async function notifyFlagged(count: number): Promise<void> {
     if (!perm.granted) return;
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: count === 1 ? "LinkGuard found 1 risky email" : `LinkGuard found ${count} risky emails`,
-        body: "From the last 24 hours. Don't click links in them. Open LinkGuard to see why.",
+        title: count === 1 ? "SafeGuard found 1 risky email" : `SafeGuard found ${count} risky emails`,
+        body: "From the last 24 hours. Don't click links in them. Open SafeGuard to see why.",
         data: { url: "/gmail" },
       },
       trigger: null,

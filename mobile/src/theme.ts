@@ -1,4 +1,4 @@
-// LinkGuard design tokens: the single source of truth for color, spacing, type, radius, and shadow.
+// SafeGuard design tokens: the single source of truth for color, spacing, type, radius, and shadow.
 // Look: soft lavender background, white cards with gentle shadows, a blue-to-violet brand gradient
 // (inspired by a smart-home dashboard). Risk keeps its own green / amber / red so "danger" never looks
 // like the brand.

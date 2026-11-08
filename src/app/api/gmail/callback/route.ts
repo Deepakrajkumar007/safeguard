@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const flow = unseal<{ state: string; verifier: string; ret: string }>(readCookie(request));
-  if (!flow) return new Response("Sign-in expired. Please go back to LinkGuard and try again.", { status: 400 });
+  if (!flow) return new Response("Sign-in expired. Please go back to SafeGuard and try again.", { status: 400 });
 
   const params = new URL(request.url).searchParams;
   if (params.get("error")) return back(withParams(flow.ret, { error: "denied" }));

@@ -1,7 +1,7 @@
 import type { CheckReport } from "./types";
 
 /**
- * The words LinkGuard reads aloud for a result: verdict, top reasons, top steps.
+ * The words SafeGuard reads aloud for a result: verdict, top reasons, top steps.
  * Shared by the website and the iPhone app so both say exactly the same thing.
  */
 export function reportToSpeech(r: CheckReport): string {

@@ -91,7 +91,7 @@ export function App() {
             </span>
           </span>
           <div>
-            <p className="text-2xl font-extrabold tracking-tight text-ink">LinkGuard</p>
+            <p className="text-2xl font-extrabold tracking-tight text-ink">SafeGuard</p>
             <p className="text-sm text-ink/70">Spot scam texts, links, and emails</p>
           </div>
         </div>
@@ -152,7 +152,7 @@ export function App() {
 
       <footer className="mx-auto mt-12 max-w-3xl text-center text-sm leading-relaxed text-ink/70">
         <p>
-          LinkGuard does not save the messages you check. It never says a message is &quot;safe&quot;, only whether it found warning signs.
+          SafeGuard does not save the messages you check. It never says a message is &quot;safe&quot;, only whether it found warning signs.
         </p>
         <p className="mt-1">
           Report scams at{" "}

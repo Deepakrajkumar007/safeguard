@@ -162,7 +162,7 @@ export default function GmailScreen() {
           <T variant="footnote" color={colors.muted} style={{ textAlign: "center" }}>
             {result || last
               ? `Last 24 hours · ${(result?.verifiedCount ?? last?.verified) || 0} from verified senders · scanned ${last ? timeAgo(last.at) : "just now"}`
-              : "LinkGuard checks your recent emails for scams and shows which ones to be careful with."}
+              : "SafeGuard checks your recent emails for scams and shows which ones to be careful with."}
           </T>
         </View>
       </Card>
@@ -227,7 +227,7 @@ export default function GmailScreen() {
 
       <Section
         title="Never scan these senders"
-        footer="Emails from these senders are never downloaded or read by LinkGuard. Use an address (boss@work.com) or a whole company (@work.com)."
+        footer="Emails from these senders are never downloaded or read by SafeGuard. Use an address (boss@work.com) or a whole company (@work.com)."
       >
         {skip.map((s) => (
           <Row
@@ -282,7 +282,7 @@ export default function GmailScreen() {
       )}
 
       <T variant="footnote" color={colors.muted} style={{ marginHorizontal: spacing.xs }}>
-        Google asks LinkGuard for permission to read your email. LinkGuard&apos;s own code limits itself to the last 24 hours and
+        Google asks SafeGuard for permission to read your email. SafeGuard&apos;s own code limits itself to the last 24 hours and
         skips your never-scan list. Email contents are checked in memory and never saved.
       </T>
     </ScrollView>

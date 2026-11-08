@@ -2,8 +2,8 @@ internal import ExpoModulesCore
 import Foundation
 
 /// The iPhone's list of recent text warnings, shown on the Text Alerts screen.
-/// Stores the risky text, who sent it, LinkGuard's verdict, and the time, so the person can see which
-/// message was flagged. Privacy: only texts LinkGuard WARNED about are kept (never texts with no red
+/// Stores the risky text, who sent it, SafeGuard's verdict, and the time, so the person can see which
+/// message was flagged. Privacy: only texts SafeGuard WARNED about are kept (never texts with no red
 /// flags), only on this iPhone (never sent to the server), newest first, at most 20,
 /// and the person can clear them at any time.
 enum WarningLog {
@@ -40,9 +40,9 @@ enum WarningLog {
 }
 
 /// Lets the app's screens read (and clear) the warning list that the Shortcuts action writes.
-final class LinkGuardWarnings: Module {
+final class SafeGuardWarnings: Module {
   public func definition() -> ExpoModulesCore.ModuleDefinition {
-    Name("LinkGuardWarnings")
+    Name("SafeGuardWarnings")
 
     Function("list") { () -> [[String: Any]] in
       WarningLog.all()

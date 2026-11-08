@@ -1,8 +1,8 @@
 import { requireOptionalNativeModule } from "expo";
 
 /**
- * Recent text warnings, written on the iPhone by the "Check Message with LinkGuard" Shortcuts action
- * (app-intents/LinkGuardWarnings.swift). Each entry is a text LinkGuard warned about, who sent it, the
+ * Recent text warnings, written on the iPhone by the "Check Message with SafeGuard" Shortcuts action
+ * (app-intents/SafeGuardWarnings.swift). Each entry is a text SafeGuard warned about, who sent it, the
  * verdict, and the time. Kept only on this iPhone (at most 20) and never sent anywhere. Not in Expo Go.
  */
 export interface TextWarning {
@@ -22,7 +22,7 @@ interface NativeWarnings {
   clear(): void;
 }
 
-const native = requireOptionalNativeModule<NativeWarnings>("LinkGuardWarnings");
+const native = requireOptionalNativeModule<NativeWarnings>("SafeGuardWarnings");
 
 export function loadWarnings(): TextWarning[] {
   if (!native) return [];

@@ -39,7 +39,7 @@ export function ExplainCard({
           </span>
           <div>
             <h3 className="text-xl font-bold">In plain English</h3>
-            <p className="text-sm text-muted">Written by AI (Google Gemini). The score comes from LinkGuard&apos;s checks, not the AI.</p>
+            <p className="text-sm text-muted">Written by AI (Google Gemini). The score comes from SafeGuard&apos;s checks, not the AI.</p>
           </div>
         </div>
         {state.status === "done" && (

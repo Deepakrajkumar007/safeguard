@@ -21,7 +21,7 @@ export default function Home() {
   const { largeText, setLargeText, setDarkMode, scale } = useSettings();
   const darkMode = useColorScheme() === "dark";
   const { scrollRef, onScroll } = useKeyboardScroll();
-  // "Check a message": paste any text or email and see LinkGuard's verdict right here.
+  // "Check a message": paste any text or email and see SafeGuard's verdict right here.
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [verdict, setVerdict] = useState<TextVerdict | null>(null);
@@ -44,7 +44,7 @@ export default function Home() {
   const [riskyTexts, setRiskyTexts] = useState(0);
 
   // Refresh the dashboard numbers whenever Home comes back into view, or the app comes back to the front
-  // (the Shortcuts action can add a warning while LinkGuard is in the background).
+  // (the Shortcuts action can add a warning while SafeGuard is in the background).
   const refresh = useCallback(() => {
     void loadLastScan().then(setLastScan);
     setRiskyTexts(loadWarnings().length); // every card in Recent warnings, including tests
@@ -76,7 +76,7 @@ export default function Home() {
         <View style={styles.headerRow}>
           <View style={{ flex: 1, gap: spacing.xs }}>
             <T variant="subhead" color={colors.onGradientMuted}>
-              LinkGuard
+              SafeGuard
             </T>
             <T variant="largeTitle" color={colors.white} accessibilityRole="header">
               Your protection
@@ -120,7 +120,7 @@ export default function Home() {
           </T>
           <View style={styles.checkCard}>
             <T variant="subhead" color={colors.muted}>
-              Not sure about a text or email? Paste it here and LinkGuard checks it for scam warning signs.
+              Not sure about a text or email? Paste it here and SafeGuard checks it for scam warning signs.
             </T>
             <TextInput
               value={text}
@@ -162,7 +162,7 @@ export default function Home() {
                   </T>
                   <T variant="subhead" color={colors.risk[verdict.level].fg}>
                     {verdict.level === "none"
-                      ? "LinkGuard didn't find warning signs. That isn't a guarantee, so stay careful with links."
+                      ? "SafeGuard didn't find warning signs. That isn't a guarantee, so stay careful with links."
                       : verdict.body}
                   </T>
                 </View>
@@ -176,7 +176,7 @@ export default function Home() {
           </View>
         </View>
 
-        <Section title="Settings" footer={'LinkGuard never says a message is "safe". It only tells you whether it found warning signs.'}>
+        <Section title="Settings" footer={'SafeGuard never says a message is "safe". It only tells you whether it found warning signs.'}>
           <Row
             left={<IconTile icon="text" color={colors.tile.settings} />}
             title="Larger text"

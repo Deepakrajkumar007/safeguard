@@ -8,7 +8,7 @@ export function redirectUri(request: Request): string {
   return `${url.origin}/api/gmail/callback`;
 }
 
-/** Only send people back into the LinkGuard app (Expo Go "exp://" in development, "linkguard://" when built). */
+/** Only send people back into the SafeGuard app (Expo Go "exp://" in development, "linkguard://" when built). */
 export function safeReturnUrl(raw: string | null): string | null {
   if (!raw || raw.length > 300) return null;
   return /^(exp|exps|linkguard):\/\/[^\s"'<>]+$/i.test(raw) ? raw : null;

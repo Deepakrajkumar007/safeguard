@@ -5,7 +5,7 @@ import { useColorScheme } from "react-native";
 import { SettingsProvider } from "@/settings";
 import { palettes } from "@/theme";
 
-// Show LinkGuard's alerts as a banner even while the app is open.
+// Show SafeGuard's alerts as a banner even while the app is open.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -15,7 +15,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Tapping a LinkGuard notification opens the screen it's about (e.g. a text warning opens Text Alerts).
+// Tapping a SafeGuard notification opens the screen it's about (e.g. a text warning opens Text Alerts).
 const SCREENS = new Set(["/alerts", "/gmail"]);
 function openFromNotification(n: Notifications.Notification | undefined) {
   const url = n?.request.content.data?.url;
@@ -44,7 +44,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: p.bg },
         }}
       >
-        <Stack.Screen name="index" options={{ title: "LinkGuard", headerShown: false }} />
+        <Stack.Screen name="index" options={{ title: "SafeGuard", headerShown: false }} />
         <Stack.Screen name="gmail" options={{ title: "Scan My Gmail" }} />
         <Stack.Screen name="open" options={{ title: "Open a Website" }} />
         <Stack.Screen name="alerts" options={{ title: "Text Alerts" }} />
