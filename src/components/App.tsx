@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { CheckTab } from "./CheckTab";
-import { MicIcon, PhoneIcon, ShieldIcon, SpeakerIcon, TextSizeIcon } from "./icons";
+import { ShieldIcon, SpeakerIcon, TextSizeIcon } from "./icons";
+import { OpenSiteTab } from "./OpenSiteTab";
 
-type Tab = "check" | "open" | "call";
+type Tab = "check" | "open";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "check", label: "Check a message" },
   { id: "open", label: "Open a site" },
-  { id: "call", label: "Call guard" },
 ];
 
 function readPref(key: string, fallback: boolean): boolean {
@@ -55,18 +55,10 @@ function Toggle({
   );
 }
 
-function ComingSoon({ title, body, icon }: { title: string; body: string; icon: React.ReactNode }) {
-  return (
-    <section className="card mx-auto max-w-2xl p-10 text-center">
-      <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-soft text-violet">{icon}</span>
-      <h2 className="mt-4 text-2xl font-bold">{title}</h2>
-      <p className="mt-2 text-lg text-muted">{body}</p>
-    </section>
-  );
-}
-
 export function App() {
   const [tab, setTab] = useState<Tab>("check");
+  // Lets "Check this link" on the Open a site tab hand a link to the Check tab.
+  const [checkSeed, setCheckSeed] = useState<{ n: number; text?: string }>({ n: 0 });
   const [largeText, setLargeText] = useState(false);
   const [autoRead, setAutoRead] = useState(true);
 
@@ -81,6 +73,14 @@ export function App() {
     document.documentElement.classList.toggle("large-text", largeText);
   }, [largeText]);
 
+  // Demo deep link: /?tab=open (optionally &site=chase)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "open") {
+      const t = setTimeout(() => setTab("open"), 0);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
   return (
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -92,7 +92,7 @@ export function App() {
           </span>
           <div>
             <p className="text-2xl font-extrabold tracking-tight text-ink">LinkGuard</p>
-            <p className="text-sm text-ink/70">Spot scam texts, links, and calls</p>
+            <p className="text-sm text-ink/70">Spot scam texts, links, and emails</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -138,19 +138,14 @@ export function App() {
       </nav>
 
       <main className="mt-6">
-        {tab === "check" && <CheckTab autoRead={autoRead} />}
+        {tab === "check" && <CheckTab key={checkSeed.n} autoRead={autoRead} initialText={checkSeed.text} />}
         {tab === "open" && (
-          <ComingSoon
-            icon={<MicIcon className="h-8 w-8" />}
-            title="Open a site by voice"
-            body='Say "open Chase" and LinkGuard shows the real website address from a verified list. Coming next.'
-          />
-        )}
-        {tab === "call" && (
-          <ComingSoon
-            icon={<PhoneIcon className="h-8 w-8" />}
-            title="Call guard"
-            body="Put a suspicious call on speaker and LinkGuard listens for scam warning signs. Coming soon."
+          <OpenSiteTab
+            autoRead={autoRead}
+            onCheckLink={(text) => {
+              setCheckSeed((s) => ({ n: s.n + 1, text }));
+              setTab("check");
+            }}
           />
         )}
       </main>

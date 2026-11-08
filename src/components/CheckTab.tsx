@@ -10,8 +10,8 @@ import { LinksCard, NextStepsCard, VerdictCard } from "./Verdict";
 
 type Speaking = "verdict" | "explain" | null;
 
-export function CheckTab({ autoRead }: { autoRead: boolean }) {
-  const [text, setText] = useState("");
+export function CheckTab({ autoRead, initialText }: { autoRead: boolean; initialText?: string }) {
+  const [text, setText] = useState(initialText ?? "");
   const [report, setReport] = useState<CheckReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +130,15 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
     },
     [autoRead, fetchExplanation],
   );
+
+  // A link handed over from the Open a site tab: check it right away.
+  useEffect(() => {
+    if (!initialText) return;
+    const t = setTimeout(() => void runCheck(initialText, { speakResult: autoRead }), 0);
+    return () => clearTimeout(t);
+    // Run once for the handed-over text.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Deep link for demos and screenshots: /?example=bank
   useEffect(() => {
