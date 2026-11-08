@@ -5,6 +5,7 @@ import { Linking, Pressable, ScrollView, Share, StyleSheet, View } from "react-n
 import { SafeAreaView } from "react-native-safe-area-context";
 import { checkMessage } from "@shared/checker";
 import { reportToSpeech } from "@shared/speech-text";
+import { ExplainCard } from "@/components/ExplainCard";
 import { Card, EvidenceList, LinkBreakdown, NextSteps, RiskMeter, ScoreCircle, StatTiles } from "@/components/ResultParts";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { T, useSettings } from "@/settings";
@@ -86,6 +87,10 @@ export default function ResultScreen() {
           <StatTiles report={report} />
         </View>
 
+        <View style={{ marginTop: 16 }}>
+          <ExplainCard text={String(text ?? "")} />
+        </View>
+
         {(reasons.length > 0 || goods.length > 0) && (
           <>
             <T size={21} weight="800" style={{ marginTop: 26, marginBottom: 10 }} accessibilityRole="header">
@@ -126,7 +131,7 @@ export default function ResultScreen() {
         )}
 
         <T size={13} color={colors.muted} style={{ textAlign: "center", marginTop: 18 }}>
-          Checked on your phone. LinkGuard never says a message is &quot;safe&quot;, only whether it found warning signs.
+          The score was checked on your phone. LinkGuard never says a message is &quot;safe&quot;, only whether it found warning signs.
         </T>
       </ScrollView>
 

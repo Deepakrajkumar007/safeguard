@@ -35,8 +35,15 @@ describe("never says safe", () => {
   ])("rewrites %s", (input, expected) => {
     expect(enforceNoSafeClaim({ ...base, explanation: input }).explanation).toBe(expected);
   });
+  it("rewrites a sentence that denies safety (real Gemini output)", () => {
+    const input =
+      "This link goes to chase.com. No warning signs were found. However, this is not a guarantee that the message is safe.";
+    expect(enforceNoSafeClaim({ ...base, explanation: input }).explanation).toBe(
+      "This link goes to chase.com. No warning signs were found. That isn't a guarantee, so stay careful.",
+    );
+  });
   it("leaves other uses alone", () => {
-    const s = "Keep your money safe: call the number on your card.";
+    const s = "Keep your money safe: call the number on your card, don't use the one in the text.";
     expect(enforceNoSafeClaim({ ...base, explanation: s }).explanation).toBe(s);
   });
 });

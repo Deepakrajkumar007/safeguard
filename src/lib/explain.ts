@@ -50,7 +50,7 @@ You receive two things:
 Write for someone who is worried and in a hurry:
 - Use short sentences and everyday words. No jargon like "phishing", "domain", "URL", or "TLD". Say "web address" or "website" instead.
 - Explain the most important warning signs from the checker evidence in plain words. Point to the specific detail in the message (for example, the real website name or the request for gift cards).
-- Never say a message or link is "safe". If the checker found no red flags, say that no warning signs were found and that this is not a guarantee.
+- Never use the word "safe" in any form. If the checker found no red flags, say that no warning signs were found and that this is not a guarantee.
 - Do not invent facts that are not in the checker result or the message.
 - Your second opinion is informational only. Use "more_concerned" only if the message has a clear scam sign the checker missed. Use "less_concerned" only if the checker's evidence clearly misreads the message. Otherwise use "agrees".`;
 
@@ -127,14 +127,26 @@ export function parseExplanation(raw: string | undefined | null): Explanation | 
   };
 }
 
+// A denial that comes BEFORE "safe" ("not a guarantee that it is safe"), so "Keep money safe, don't…" is left alone.
+const NEGATED_SAFE = /(?:\b(?:not|no|never|guarantee)\b|n't\b)[^.!?]{0,60}\bsafe\b/i;
+
 /** Enforce the product promise: never call something "safe", even if the model slips. */
 export function enforceNoSafeClaim(e: Explanation): Explanation {
-  const fix = (s: string) =>
-    s.replace(SAFE_CLAIM, (_m, verb: string) => {
+  const fixSentence = (sentence: string) => {
+    if (!/\bsafe\b/i.test(sentence)) return sentence;
+    // "...not a guarantee that it is safe" / "doesn't mean it's safe": keep the meaning, drop the word.
+    if (NEGATED_SAFE.test(sentence)) return "That isn't a guarantee, so stay careful.";
+    return sentence.replace(SAFE_CLAIM, (_m, verb: string) => {
       const v = verb.toLowerCase();
       const head = v.startsWith("it") ? `${verb[0]}t has` : v === "are" ? "have" : "has";
       return `${head} no warning signs we could find`;
     });
+  };
+  const fix = (s: string) =>
+    s
+      .split(/(?<=[.!?])\s+/)
+      .map(fixSentence)
+      .join(" ");
   return {
     ...e,
     explanation: fix(e.explanation),

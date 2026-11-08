@@ -5,6 +5,7 @@ import { EXAMPLES } from "@/lib/examples";
 import { reportToSpeech, speak, stopSpeaking } from "@/lib/speech";
 import type { CheckReport } from "@/lib/types";
 import { ExplainCard, explanationToSpeech, type ExplainState } from "./ExplainCard";
+import { ImageIcon } from "./icons";
 import { LinksCard, NextStepsCard, VerdictCard } from "./Verdict";
 
 type Speaking = "verdict" | "explain" | null;
@@ -14,6 +15,9 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
   const [report, setReport] = useState<CheckReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [readingImage, setReadingImage] = useState(false);
+  const [fromScreenshot, setFromScreenshot] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [speaking, setSpeaking] = useState<Speaking>(null);
   const [explain, setExplain] = useState<ExplainState>({ status: "idle" });
   const resultRef = useRef<HTMLDivElement>(null);
@@ -77,6 +81,56 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
     [fetchExplanation],
   );
 
+  // Screenshot upload: AI transcribes the image, then the deterministic checker scores the text.
+  const runScreenshot = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        setError("Please choose a picture (a screenshot of the message).");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError("That image is too big. Use a screenshot under 5 MB.");
+        return;
+      }
+      const id = ++requestId.current;
+      setReadingImage(true);
+      setError(null);
+      setExplain({ status: "idle" });
+      stopSpeaking();
+      setSpeaking(null);
+      try {
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(new Error("Couldn't open that file."));
+          reader.readAsDataURL(file);
+        });
+        const res = await fetch("/api/screenshot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: dataUrl }),
+        });
+        const data = await res.json();
+        if (id !== requestId.current) return;
+        if (!res.ok) throw new Error(data.error ?? "Couldn't read that screenshot. Try pasting the text instead.");
+        setText(data.text);
+        setFromScreenshot(true);
+        setReport(data.report as CheckReport);
+        void fetchExplanation(data.text, id);
+        if (autoRead) {
+          setSpeaking("verdict");
+          speak(reportToSpeech(data.report as CheckReport), () => setSpeaking(null));
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Couldn't read that screenshot. Try pasting the text instead.");
+      } finally {
+        setReadingImage(false);
+        if (fileRef.current) fileRef.current.value = "";
+      }
+    },
+    [autoRead, fetchExplanation],
+  );
+
   // Deep link for demos and screenshots: /?example=bank
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get("example");
@@ -126,12 +180,41 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
             <textarea
               id="message"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                setFromScreenshot(false);
+              }}
               rows={6}
               maxLength={5000}
               placeholder="For example: Your account has been locked. Verify now at…"
               className="mt-2 w-full resize-y rounded-2xl border-0 bg-white p-4 text-lg leading-relaxed text-ink shadow-inner placeholder:text-slate-400 focus:outline-none focus-visible:ring-4 focus-visible:ring-white/60"
             />
+
+            {fromScreenshot && (
+              <p className="mt-2 text-sm text-white/80">
+                Read from your screenshot by AI (Google Gemini). Make sure the text above matches the picture.
+              </p>
+            )}
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/heic,image/heif"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void runScreenshot(f);
+              }}
+            />
+            <button
+              type="button"
+              disabled={readingImage}
+              onClick={() => fileRef.current?.click()}
+              className="glass mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-lg font-semibold text-white hover:bg-white/25 disabled:opacity-70"
+            >
+              <ImageIcon className="h-5 w-5" />
+              {readingImage ? "Reading your screenshot…" : "Upload a screenshot instead"}
+            </button>
 
             <div className="mt-4">
               <p className="text-sm text-white/75">Or try an example:</p>
@@ -142,6 +225,7 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
                     type="button"
                     onClick={() => {
                       setText(ex.text);
+                      setFromScreenshot(false);
                       void runCheck(ex.text, { speakResult: autoRead });
                     }}
                     className="glass rounded-full px-4 py-2 text-[0.95rem] font-medium text-white hover:bg-white/25"
@@ -164,6 +248,7 @@ export function CheckTab({ autoRead }: { autoRead: boolean }) {
                 type="button"
                 onClick={() => {
                   setText("");
+                  setFromScreenshot(false);
                   setReport(null);
                   setError(null);
                   setExplain({ status: "idle" });
