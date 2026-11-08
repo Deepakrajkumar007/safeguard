@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { Text, type TextProps, type TextStyle } from "react-native";
-import { colors } from "./theme";
+import { colors, type, type TypeVariant } from "./theme";
 
 interface Settings {
   largeText: boolean;
@@ -32,17 +32,24 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 export const useSettings = () => useContext(SettingsContext);
 
 /**
- * App text. Sizes scale with the "Larger text" switch, on top of the iPhone's own text-size setting
+ * App text. Always uses a step of the type ramp (theme.type), never a raw size.
+ * Sizes scale with the "Larger text" switch, on top of the iPhone's own text-size setting
  * (React Native respects Dynamic Type by default).
  */
 export function T({
-  size = 17,
-  weight = "400",
+  variant = "body",
+  weight,
   color = colors.ink,
   style,
   ...rest
-}: TextProps & { size?: number; weight?: TextStyle["fontWeight"]; color?: string }) {
+}: TextProps & { variant?: TypeVariant; weight?: TextStyle["fontWeight"]; color?: string }) {
   const { scale } = useSettings();
-  const fontSize = Math.round(size * scale);
-  return <Text {...rest} style={[{ fontSize, fontWeight: weight, color, lineHeight: Math.round(fontSize * 1.3) }, style]} />;
+  const base = type[variant];
+  const fontSize = Math.round(base.fontSize * scale);
+  return (
+    <Text
+      {...rest}
+      style={[{ ...base, fontSize, lineHeight: Math.round(fontSize * 1.3), color }, weight ? { fontWeight: weight } : null, style]}
+    />
+  );
 }
