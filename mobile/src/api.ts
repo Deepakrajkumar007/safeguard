@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import type { Explanation } from "@shared/explain";
+import type { ReputationResult } from "@shared/reputation";
 
 /**
  * Where the LinkGuard server lives.
@@ -43,5 +44,22 @@ export async function fetchExplanation(text: string): Promise<ExplainResult> {
     return { ok: false, message: "Couldn't reach the AI. The result above still applies." };
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/** Ask the server whether Google lists any of these LINKS as dangerous. Only links are sent, not the message. */
+export async function fetchReputation(urls: string[]): Promise<ReputationResult | null> {
+  const base = apiBase();
+  if (!base || urls.length === 0) return null;
+  try {
+    const res = await fetch(`${base}/api/reputation`, {
+      method: "POST",
+      headers: apiHeaders(),
+      body: JSON.stringify({ urls: urls.slice(0, 10) }),
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as ReputationResult;
+  } catch {
+    return null;
   }
 }

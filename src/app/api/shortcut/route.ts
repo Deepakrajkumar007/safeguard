@@ -1,4 +1,4 @@
-import { checkMessage } from "@/lib/checker";
+import { checkWithReputation } from "@/lib/safe-browsing";
 import { guard } from "@/lib/guard";
 
 /**
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const text = typeof (body as { text?: unknown })?.text === "string" ? (body as { text: string }).text.slice(0, 5000) : "";
   if (!text.trim()) return Response.json({ show: "no", notification: "", alert: false, level: "none", score: 0, title: "", body: "" });
 
-  const r = checkMessage(text);
+  const r = await checkWithReputation(text);
   const alert = r.level === "high" || r.level === "caution";
   const title = r.level === "high" ? "LinkGuard: High risk text" : r.level === "caution" ? "LinkGuard: Be careful" : "LinkGuard";
   const lead = r.scamType ? `Looks like a ${r.scamType.label.toLowerCase()}.` : r.headline + ".";

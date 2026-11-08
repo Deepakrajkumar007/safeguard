@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { checkMessage } from "@/lib/checker";
+import { checkWithReputation } from "@/lib/safe-browsing";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/explain";
 import {
   EXTRACTION_PROMPT,
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const text = textForChecker(extracted);
     if (!text.trim()) return fail("We couldn't find a message in that image. Try a clearer screenshot.", 422);
     // The deterministic checker decides. The AI only transcribed.
-    return Response.json({ extracted, text, report: checkMessage(text) });
+    return Response.json({ extracted, text, report: await checkWithReputation(text) });
   } catch (error) {
     const status = (error as { status?: number })?.status;
     console.warn(`[screenshot] Gemini error status=${status ?? "none"}: ${String((error as Error)?.message ?? error).slice(0, 200)}`);

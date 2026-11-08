@@ -1,4 +1,4 @@
-import { checkMessage } from "@/lib/checker";
+import { checkWithReputation } from "@/lib/safe-browsing";
 import { guard } from "@/lib/guard";
 
 // Privacy: the message is checked in memory and never logged or stored.
@@ -28,5 +28,5 @@ export async function POST(request: Request) {
     return Response.json({ error: "That message is too long. Paste just the text message or link." }, { status: 413 });
   }
 
-  return Response.json(checkMessage(text));
+  return Response.json(await checkWithReputation(text));
 }

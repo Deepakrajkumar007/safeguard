@@ -155,7 +155,7 @@ function summaryFor(
   }
 }
 
-export function checkMessage(input: string): CheckReport {
+export function checkMessage(input: string, opts: { extraEvidence?: Evidence[] } = {}): CheckReport {
   const text = (input ?? "").slice(0, 5000);
   const urls = extractUrls(text).slice(0, 10);
   const links = urls.map(analyzeLink);
@@ -165,7 +165,8 @@ export function checkMessage(input: string): CheckReport {
   const phones = extractPhones(prose).slice(0, 10);
   const wording = analyzeText(prose);
   const linkEvidence = links.flatMap((l) => l.evidence);
-  const evidence: Evidence[] = [...linkEvidence, ...wording];
+  // extraEvidence: e.g. Google Safe Browsing listings, looked up by the server before calling this.
+  const evidence: Evidence[] = [...linkEvidence, ...wording, ...(opts.extraEvidence ?? [])];
 
   // Message claims to be from a brand, but a link goes somewhere that isn't that brand (or any known brand).
   const mentioned = brandsMentioned(prose);

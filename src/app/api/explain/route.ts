@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { checkMessage } from "@/lib/checker";
+import { checkWithReputation } from "@/lib/safe-browsing";
 import {
   DEFAULT_GEMINI_MODEL,
   EXPLANATION_SCHEMA,
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
   // Re-run the checker on the server. The AI only ever sees evidence our own code produced,
   // never a report sent by the browser.
-  const report = checkMessage(text);
+  const report = await checkWithReputation(text);
 
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {

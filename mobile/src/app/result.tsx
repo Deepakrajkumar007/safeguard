@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { checkMessage } from "@shared/checker";
+import { NOT_LISTED_NOTE, reputationEvidence, type ReputationResult } from "@shared/reputation";
 import { reportToSpeech } from "@shared/speech-text";
+import { fetchReputation } from "@/api";
 import { ExplainCard } from "@/components/ExplainCard";
 import { Card, EvidenceList, LinkBreakdown, NextSteps, RiskMeter, ScoreCircle, StatTiles } from "@/components/ResultParts";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -19,8 +21,33 @@ export default function ResultScreen() {
   // Starts "speaking" when auto read-aloud is on; the effect below begins the speech.
   const [speaking, setSpeaking] = useState(autoRead);
 
-  // The verdict is computed on the phone by the same checker the server uses. Nothing is sent anywhere.
-  const report = useMemo(() => checkMessage(String(text ?? "")), [text]);
+  // The verdict is computed on the phone by the same checker the server uses.
+  const base = useMemo(() => checkMessage(String(text ?? "")), [text]);
+  // Then only the LINKS are checked against Google's list of dangerous sites (via our server).
+  const [rep, setRep] = useState<ReputationResult | null>(null);
+  const report = useMemo(() => {
+    if (!rep) return base;
+    const r = checkMessage(String(text ?? ""), { extraEvidence: reputationEvidence(rep) });
+    if (rep.checked && rep.flagged.length === 0 && r.links.length > 0 && (r.level === "none" || r.level === "low")) {
+      r.evidence.push(NOT_LISTED_NOTE);
+    }
+    return r;
+  }, [base, rep, text]);
+
+  useEffect(() => {
+    if (base.links.length === 0) return;
+    let alive = true;
+    void fetchReputation(base.links.map((l) => l.input)).then((r) => {
+      if (!alive || !r) return;
+      setRep(r);
+      if (r.flagged.length > 0 && autoRead) void speak("Update. Google lists this website as dangerous. Do not open it.");
+    });
+    return () => {
+      alive = false;
+    };
+    // Look up once per message.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base]);
   const spoken = useMemo(() => reportToSpeech(report), [report]);
   const level = colors.risk[report.level];
 
@@ -131,7 +158,8 @@ export default function ResultScreen() {
         )}
 
         <T size={13} color={colors.muted} style={{ textAlign: "center", marginTop: 18 }}>
-          The score was checked on your phone. LinkGuard never says a message is &quot;safe&quot;, only whether it found warning signs.
+          The message was checked on your phone{rep?.checked ? "; its links were also checked with Google Safe Browsing" : ""}. LinkGuard never says a
+          message is &quot;safe&quot;, only whether it found warning signs.
         </T>
       </ScrollView>
 
