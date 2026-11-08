@@ -1,9 +1,13 @@
 import { checkMessage } from "@/lib/checker";
+import { guard } from "@/lib/guard";
 
 // Privacy: the message is checked in memory and never logged or stored.
 const MAX_CHARS = 5000;
 
 export async function POST(request: Request) {
+  const blocked = guard(request, "check", 60);
+  if (blocked) return blocked;
+
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > 50_000) {
     return Response.json({ error: "That message is too long. Paste just the text message or link." }, { status: 413 });

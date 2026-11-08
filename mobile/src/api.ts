@@ -13,6 +13,14 @@ export function apiBase(): string | null {
   return host ? `http://${host}:3000` : null;
 }
 
+/** Headers for every server call. The key is a speed bump against abuse, not a secret (it ships in the app). */
+export function apiHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  const key = process.env.EXPO_PUBLIC_LINKGUARD_KEY;
+  if (key) h["x-linkguard-key"] = key;
+  return h;
+}
+
 export type ExplainResult = { ok: true; data: Explanation } | { ok: false; message: string };
 
 /** Ask the server's AI (Google Gemini) to explain the checker's verdict. The score never comes from here. */
@@ -24,7 +32,7 @@ export async function fetchExplanation(text: string): Promise<ExplainResult> {
   try {
     const res = await fetch(`${base}/api/explain`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: apiHeaders(),
       body: JSON.stringify({ text: text.slice(0, 5000) }),
       signal: controller.signal,
     });

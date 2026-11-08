@@ -8,6 +8,7 @@ import {
   enforceNoSafeClaim,
   parseExplanation,
 } from "@/lib/explain";
+import { guard } from "@/lib/guard";
 
 // Privacy: the message is sent to Google's Gemini API to write the explanation.
 // We don't log or store it, and we ask Google not to store the interaction (store: false).
@@ -19,6 +20,9 @@ function unavailable(reason: string, status = 503) {
 }
 
 export async function POST(request: Request) {
+  const blocked = guard(request, "explain", 20);
+  if (blocked) return blocked;
+
   let body: unknown;
   try {
     body = await request.json();

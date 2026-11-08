@@ -1,0 +1,5 @@
+# The Expo iPhone app and demo assets aren't part of the web/server deploy.
+mobile
+demo
+scripts
+.env*.local

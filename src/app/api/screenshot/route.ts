@@ -10,6 +10,7 @@ import {
   sniffImageType,
   textForChecker,
 } from "@/lib/screenshot";
+import { guard } from "@/lib/guard";
 
 // Privacy: the screenshot is sent to Google's Gemini API to read the text. We don't log or store it,
 // and we ask Google not to store the interaction (store: false). Links in it are never opened.
@@ -20,6 +21,9 @@ function fail(error: string, status: number) {
 }
 
 export async function POST(request: Request) {
+  const blocked = guard(request, "screenshot", 8);
+  if (blocked) return blocked;
+
   // Base64 is ~4/3 the file size, plus JSON overhead.
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > MAX_IMAGE_BYTES * 1.4 + 1024) return fail("That image is too big. Use a screenshot under 5 MB.", 413);
