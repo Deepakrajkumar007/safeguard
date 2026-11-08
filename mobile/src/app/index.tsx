@@ -10,7 +10,7 @@ type IconName = keyof typeof Ionicons.glyphMap;
 const QUICK: { label: string; icon: IconName; color: string; href: Href }[] = [
   { label: "Check text", icon: "chatbubble-ellipses", color: colors.blue, href: "/check" },
   { label: "Screenshot", icon: "image", color: "#7C4DFF", href: "/soon?title=Read a screenshot" },
-  { label: "Open a site", icon: "globe", color: "#0B9E6F", href: "/soon?title=Open a site" },
+  { label: "Open a site", icon: "globe", color: "#0B9E6F", href: "/open" },
   { label: "Call guard", icon: "call", color: "#E0457B", href: "/soon?title=Call guard" },
   { label: "Gmail", icon: "mail", color: "#E26B00", href: "/soon?title=Scan my Gmail" },
 ];
@@ -21,7 +21,7 @@ const FEATURES: { title: string; body: string; icon: IconName; bg: string; href:
     body: 'Say "open Chase". We only open real, verified addresses.',
     icon: "globe-outline",
     bg: colors.blueSoft,
-    href: "/soon?title=Open a site",
+    href: "/open",
   },
   {
     title: "Call guard",
