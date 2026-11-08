@@ -7,7 +7,9 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.deepakrajkumar.linkguard",
+      "appleTeamId": "ASCQD39794"
     },
     "android": {
       "adaptiveIcon": {
@@ -26,7 +28,8 @@
       "expo-status-bar",
       "expo-audio",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withoutPushEntitlement.js"
     ],
     "scheme": "linkguard"
   }
